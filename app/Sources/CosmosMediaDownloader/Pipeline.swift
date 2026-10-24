@@ -92,8 +92,17 @@ enum Pipeline {
     private final class PartTracker: @unchecked Sendable {
         private let lock = NSLock()
         private var part = 0
-        func next() { lock.lock(); part += 1; lock.unlock() }
+        private var slowSince: Date?
+        func next() { lock.lock(); part += 1; slowSince = nil; lock.unlock() }
         var current: Int { lock.lock(); defer { lock.unlock() }; return max(part, 1) }
+
+        /// True once the speed has stayed under ~150 KB/s for 15 seconds, the signature of YouTube's throttling.
+        func isThrottled(speed: Double?) -> Bool {
+            lock.lock(); defer { lock.unlock() }
+            guard let speed, speed > 0, speed < 150_000 else { slowSince = nil; return false }
+            if slowSince == nil { slowSince = Date() }
+            return Date().timeIntervalSince(slowSince!) > 15
+        }
     }
 
     /// Downloads into `workDir` and returns the downloaded file. Progress is 0...1 across all parts.
@@ -129,7 +138,9 @@ enum Pipeline {
                 if parts > 1 { overall = part == 1 ? fraction * 0.85 : 0.85 + fraction * 0.15 }
                 else { overall = fraction }
                 var detail = parts > 1 ? (part == 1 ? "Downloading video" : "Downloading audio") : "Downloading"
-                if let speed = Double(f[4]), speed > 0 { detail += " · " + ByteCountFormatter.string(fromByteCount: Int64(speed), countStyle: .file) + "/s" }
+                let speed = Double(f[4])
+                if let speed, speed > 0 { detail += " · " + ByteCountFormatter.string(fromByteCount: Int64(speed), countStyle: .file) + "/s" }
+                if tracker.isThrottled(speed: speed) { detail = "Very slow: the site is limiting this download. Settings → Update now may help · " + detail }
                 if let eta = Double(f[5]), eta > 0 { detail += " · " + TimeFormat.string(eta) + " left" }
                 onProgress(overall, detail)
             } else if line.hasPrefix("[Merger]") {
@@ -144,6 +155,89 @@ enum Pipeline {
             throw PipelineError(message: "The download finished but the file is missing.")
         }
         return URL(fileURLWithPath: saved)
+    }
+
+    // MARK: Trimmed download
+
+    /// For a trimmed video, reads only the chosen part straight from the site's servers and converts it in one pass,
+    /// instead of downloading the whole file first. Returns false when the site serves the video in a way this
+    /// can't handle (for example DASH fragments); the caller then falls back to a full download.
+    static func downloadSection(url: String, quality: Quality, trimStart: Double?, trimEnd: Double?, duration: Double?,
+                                useLogin: Bool, browser: String, output: URL, handle: RunningProcess,
+                                onProgress: @escaping @Sendable (Double, String) -> Void) async throws -> Bool {
+        onProgress(0, "Finding the part you trimmed…")
+        let args = commonArgs(useLogin: useLogin, browser: browser) + ["-j", "-f", quality.formatSelector, "--", url]
+        let result = try await Runner.run(Tools.ytdlp, args, handle: handle)
+        if handle.cancelled { throw CancellationError() }
+        guard result.status == 0,
+              let json = try? JSONSerialization.jsonObject(with: Data(result.stdout.utf8)) as? [String: Any] else {
+            throw PipelineError.from(result.stderr, fallback: "Couldn't read this link.")
+        }
+        let formats = (json["requested_formats"] as? [[String: Any]]) ?? [json]
+        let direct = ["http", "https", "m3u8", "m3u8_native"]
+        guard formats.allSatisfy({ direct.contains(($0["protocol"] as? String) ?? "") && ($0["url"] as? String) != nil }) else {
+            return false
+        }
+
+        let start = max(trimStart ?? 0, 0)
+        let end = trimEnd ?? duration
+        let length = end.map { max($0 - start, 0.1) }
+        var inputs: [String] = []
+        var videoIndex: Int?
+        var audioIndex: Int?
+        var height: Int?
+        var fps: Double?
+        for (i, format) in formats.enumerated() {
+            let headers = (format["http_headers"] as? [String: String] ?? [:]).map { "\($0.key): \($0.value)\r\n" }.joined()
+            if !headers.isEmpty { inputs += ["-headers", headers] }
+            if start > 0 { inputs += ["-ss", String(format: "%.3f", start)] }
+            if let length { inputs += ["-t", String(format: "%.3f", length)] }
+            inputs += ["-i", format["url"] as! String]
+            let vcodec = format["vcodec"] as? String ?? "none"
+            let acodec = format["acodec"] as? String ?? "none"
+            if vcodec != "none", videoIndex == nil {
+                videoIndex = i
+                height = format["height"] as? Int
+                fps = (format["fps"] as? NSNumber)?.doubleValue
+            }
+            if acodec != "none", audioIndex == nil { audioIndex = i }
+        }
+
+        var maps: [String] = []
+        var codecArgs: [String]
+        var container: [String] = []
+        if quality.isAudio {
+            guard let a = audioIndex ?? videoIndex else { return false }
+            maps = ["-map", "\(a):a:0"]
+            codecArgs = quality == .mp3 ? ["-c:a", "libmp3lame", "-q:a", "0"] : ["-c:a", "pcm_s24le", "-ar", "48000"]
+        } else {
+            guard let v = videoIndex else { return false }
+            maps = ["-map", "\(v):v:0"]
+            if let a = audioIndex { maps += ["-map", "\(a):a:0"] }
+            codecArgs = hardwareVideoArgs(height: height, fps: fps) + ["-c:a", "aac", "-b:a", "320k", "-ar", "48000"]
+            container = ["-tag:v", "avc1", "-movflags", "+faststart"]
+        }
+
+        let total = length ?? 0
+        func attempt(_ codecs: [String]) async throws -> ProcessResult {
+            try await Runner.run(Tools.ffmpeg, ["-hide_banner", "-nostdin", "-y"] + inputs + maps + codecs + container
+                                 + ["-progress", "pipe:1", "-nostats", "-loglevel", "error", output.path], handle: handle) { line in
+                guard line.hasPrefix("out_time_us="), total > 0, let us = Double(line.dropFirst("out_time_us=".count)) else { return }
+                let fraction = min(max(us / 1_000_000 / total, 0), 1)
+                onProgress(fraction, "Downloading and converting the trimmed part… \(Int(fraction * 100))%")
+            }
+        }
+        onProgress(0, "Downloading and converting the trimmed part…")
+        var run = try await attempt(codecArgs)
+        if handle.cancelled { throw CancellationError() }
+        if run.status != 0, codecArgs.contains("h264_videotoolbox") {
+            codecArgs = ["-c:v", "libx264", "-preset", "fast", "-crf", "18", "-profile:v", "high", "-pix_fmt", "yuv420p",
+                         "-c:a", "aac", "-b:a", "320k", "-ar", "48000"]
+            run = try await attempt(codecArgs)
+            if handle.cancelled { throw CancellationError() }
+        }
+        // If reading straight from the site fails (expired link, odd server), the full download still works.
+        return run.status == 0 && FileManager.default.fileExists(atPath: output.path)
     }
 
     // MARK: Convert

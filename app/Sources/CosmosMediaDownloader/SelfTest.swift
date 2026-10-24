@@ -18,11 +18,19 @@ enum SelfTest {
                 do {
                     let info = try await Pipeline.fetchInfo(url: url, quality: quality, useLogin: false, browser: "none")
                     print("INFO \(info.site) | \(info.title) | \(Pipeline.resolutionLabel(height: info.height) ?? "?") | parts=\(info.parts)")
-                    let file = try await Pipeline.download(url: url, quality: quality, expectedParts: info.parts, useLogin: false,
-                                                           browser: "none", workDir: work, handle: handle) { _, _ in }
                     let out = work.appendingPathComponent("final." + quality.fileExtension)
                     final class Box: @unchecked Sendable { var detail = "" }
                     let last = Box()
+                    if range.count == 2, try await Pipeline.downloadSection(url: url, quality: quality, trimStart: range[0], trimEnd: range[1],
+                                                                            duration: info.duration, useLogin: false, browser: "none",
+                                                                            output: out, handle: handle, onProgress: { _, d in last.detail = d }) {
+                        let probe = try await Runner.run(Tools.ffprobe, ["-v", "error", "-show_entries", "stream=codec_name,width,height,pix_fmt:format=duration", "-of", "compact", out.path])
+                        print("OK (trimmed part only) \(quality.rawValue) in \(Int(Date().timeIntervalSince(started)))s | \(last.detail)\n\(probe.stdout)")
+                        try? FileManager.default.removeItem(at: work)
+                        continue
+                    }
+                    let file = try await Pipeline.download(url: url, quality: quality, expectedParts: info.parts, useLogin: false,
+                                                           browser: "none", workDir: work, handle: handle) { _, _ in }
                     try await Pipeline.finalize(input: file, quality: quality,
                                                 trimStart: range.count == 2 ? range[0] : nil, trimEnd: range.count == 2 ? range[1] : nil,
                                                 output: out, handle: handle) { _, detail in last.detail = detail }
