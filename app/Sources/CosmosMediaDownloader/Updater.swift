@@ -11,10 +11,30 @@ final class Updater: ObservableObject {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
     }
 
+    private var lastCheck = Date.distantPast
+    private var timer: Timer?
+
+    /// Checks now, then every hour while the app stays open.
+    func startChecking() {
+        check()
+        guard timer == nil else { return }
+        timer = Timer.scheduledTimer(withTimeInterval: 3600, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.check() }
+        }
+    }
+
+    /// Called when the app comes to the front; skips if it checked in the last ten minutes.
+    func checkIfStale() {
+        if Date().timeIntervalSince(lastCheck) > 600 { check() }
+    }
+
     func check() {
+        lastCheck = Date()
         Task {
-            guard let url = URL(string: "https://api.github.com/repos/raetori/ultra-hd-youtube-downloader/releases/latest"),
-                  let response = try? await URLSession.shared.data(from: url),
+            guard let url = URL(string: "https://api.github.com/repos/raetori/ultra-hd-youtube-downloader/releases/latest") else { return }
+            var request = URLRequest(url: url)
+            request.cachePolicy = .reloadIgnoringLocalCacheData
+            guard let response = try? await URLSession.shared.data(for: request),
                   let json = try? JSONSerialization.jsonObject(with: response.0) as? [String: Any],
                   let tag = json["tag_name"] as? String else { return }
             let latest = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
