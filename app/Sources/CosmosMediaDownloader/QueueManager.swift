@@ -269,15 +269,26 @@ final class QueueManager: ObservableObject {
             }
             item.runner = nil
             pump()
+            updateDockBadge()
             if activeCount == 0 && waitingCount == 0 && finishedCount > 0 {
                 _ = NSApp.requestUserAttention(.informationalRequest)
             }
         }
     }
 
+    private var activity: NSObjectProtocol?
+
     private func updateDockBadge() {
         let pending = activeCount + waitingCount
         NSApp.dockTile.badgeLabel = pending > 0 ? "\(pending)" : nil
+        // Keep macOS from napping or slowing the app while downloads run with its window hidden.
+        if pending > 0, activity == nil {
+            activity = ProcessInfo.processInfo.beginActivity(options: [.userInitiated, .idleSystemSleepDisabled],
+                                                            reason: "Downloading videos")
+        } else if pending == 0, let token = activity {
+            ProcessInfo.processInfo.endActivity(token)
+            activity = nil
+        }
     }
 
     // MARK: History (kept only on this Mac)
