@@ -31,12 +31,16 @@ jobs:
           screencapture -x dist/screenshot.png
           pkill -x CosmosMediaDownloader || true
 
-      - uses: actions/upload-artifact@v4
+      - name: Keep the screenshot on a "ci-preview" pre-release
         if: always()
-        with:
-          name: screenshot
-          path: dist/screenshot.png
-          if-no-files-found: ignore
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -f dist/screenshot.png ] || exit 0
+          gh release view ci-preview >/dev/null 2>&1 || \
+            gh release create ci-preview --prerelease --title "CI preview" --notes "Screenshots from automated test launches. Not for installing."
+          gh release upload ci-preview dist/screenshot.png --clobber
 
       - name: Publish release
         env:
