@@ -29,6 +29,9 @@ struct MediaInfo {
 }
 
 enum Pipeline {
+    /// Set by the self-test to see why the trimmed-part shortcut fell back to a full download.
+    nonisolated(unsafe) static var debugLog: ((String) -> Void)?
+
     static func commonArgs(useLogin: Bool, browser: String) -> [String] {
         var args = ["--ffmpeg-location", Tools.bin.path, "--no-playlist"]
         if FileManager.default.isExecutableFile(atPath: Tools.deno.path) {
@@ -178,6 +181,7 @@ enum Pipeline {
         let formats = (json["requested_formats"] as? [[String: Any]]) ?? [json]
         let direct = ["http", "https", "m3u8", "m3u8_native"]
         guard formats.allSatisfy({ direct.contains(($0["protocol"] as? String) ?? "") && ($0["url"] as? String) != nil }) else {
+            debugLog?("section: unsupported protocols \(formats.map { ($0["protocol"] as? String) ?? "nil" })")
             return false
         }
 
@@ -239,6 +243,7 @@ enum Pipeline {
             if handle.cancelled { throw CancellationError() }
         }
         // If reading straight from the site fails (expired link, odd server), the full download still works.
+        if run.status != 0 { debugLog?("section: ffmpeg failed: \(run.stderr.suffix(400))") }
         return run.status == 0 && FileManager.default.fileExists(atPath: output.path)
     }
 

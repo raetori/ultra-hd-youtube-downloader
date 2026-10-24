@@ -4,6 +4,7 @@ import Foundation
 /// (START-END may be empty). Downloads and converts each link, then prints the codecs of the result.
 enum SelfTest {
     static func run(_ specs: [String]) -> Never {
+        Pipeline.debugLog = { print("DEBUG \($0)") }
         Task {
             var failures = 0
             for spec in specs {
