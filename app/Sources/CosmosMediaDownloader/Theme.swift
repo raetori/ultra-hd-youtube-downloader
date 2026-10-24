@@ -120,13 +120,14 @@ struct OrbRing: View {
         let orb = max(3, size * 0.16)
         return ZStack {
             Circle().stroke(Color.white.opacity(0.08), lineWidth: lineWidth)
-            Circle()
-                .trim(from: 0, to: trailEnd - trailStart)
-                .stroke(AngularGradient(colors: [Theme.gold.opacity(0), Theme.gold.opacity(0.9)],
-                                        center: .center,
-                                        startAngle: .degrees(0), endAngle: .degrees(360 * (trailEnd - trailStart))),
-                        style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
-                .rotationEffect(.degrees(-90 + 360 * trailStart))
+            // The trail brightens toward the orb, drawn as short arcs so it renders the same everywhere.
+            let length = trailEnd - trailStart
+            ForEach(0..<16, id: \.self) { i in
+                Circle()
+                    .trim(from: length * Double(i) / 16, to: length * Double(i + 1) / 16)
+                    .stroke(Theme.gold.opacity(0.9 * Double(i + 1) / 16), style: StrokeStyle(lineWidth: lineWidth, lineCap: .butt))
+            }
+            .rotationEffect(.degrees(-90 + 360 * trailStart))
             Circle()
                 .fill(Color.white)
                 .frame(width: orb, height: orb)
