@@ -61,10 +61,18 @@ struct ContentView: View {
             HStack(spacing: 8) {
                 HStack(spacing: 8) {
                     Image(systemName: "link").foregroundStyle(.white.opacity(0.5))
-                    TextField("", text: $linkText, prompt: Text("Paste links from YouTube, TikTok, Instagram, Facebook… (several at once is fine)").foregroundColor(.white.opacity(0.4)))
-                        .textFieldStyle(.plain)
-                        .foregroundStyle(.white)
-                        .onSubmit(addTyped)
+                    ZStack(alignment: .leading) {
+                        if linkText.isEmpty {
+                            Text("Paste links from YouTube, TikTok, Instagram, Facebook… (several at once is fine)")
+                                .foregroundStyle(.white.opacity(0.45))
+                                .allowsHitTesting(false)
+                        }
+                        TextField("", text: $linkText)
+                            .textFieldStyle(.plain)
+                            .foregroundStyle(.white)
+                            .onSubmit(addTyped)
+                    }
+                    .font(.system(size: 13))
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 9)
