@@ -114,8 +114,10 @@ enum Pipeline {
         args += ["-f", quality.formatSelector,
                  "-P", workDir.path, "-o", "media.%(ext)s",
                  "--newline", "--no-mtime", "--force-overwrites",
-                 // Several connections at once for sites that serve video in pieces (Instagram, TikTok, HLS/DASH).
-                 "--concurrent-fragments", "4",
+                 // YouTube limits the speed of each connection, so its files are fetched as pieces over
+                 // 8 connections at once ("dashy"); other sites that serve pieces benefit from the same setting.
+                 "--extractor-args", "youtube:formats=dashy",
+                 "--concurrent-fragments", "8",
                  "--progress-template", "download:COSMOS %(progress.downloaded_bytes)s %(progress.total_bytes)s %(progress.total_bytes_estimate)s %(progress.speed)s %(progress.eta)s",
                  "--print-to-file", "after_move:filepath", pathFile.path]
         if !quality.isAudio { args += ["--merge-output-format", "mkv"] }
