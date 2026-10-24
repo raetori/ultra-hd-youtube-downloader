@@ -1,52 +1,59 @@
-# Cosmos YouTube Downloader (Mac)
+# Cosmos Media Downloader (Mac)
 
 <img src="assets/icon.png" width="96" align="right">
 
-Download YouTube videos in HD as **H.264 MP4 files that import straight into Premiere Pro**. No WebM, no conversion step on your side. Made by [Creation of Cosmos](https://www.creationofcosmos.com).
+Download videos from YouTube, TikTok, Instagram, Facebook, Vimeo and more in HD, as **H.264 MP4 files that import straight into Premiere Pro**. Made by [Creation of Cosmos](https://www.creationofcosmos.com).
 
-**Please only download videos your team has the rights to use.**
+**Please only download content you have the rights to use.**
 
 ## Install (once, about 2 minutes)
 
 1. Open **Terminal**: press Cmd + Space, type `Terminal`, press Return.
-2. Paste this line and press Return:
+2. Paste this line. It starts on its own:
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/raetori/ultra-hd-youtube-downloader/main/install.sh)"
 ```
 
-3. When it says **All set!**, the app opens by itself. Close Terminal.
+3. When it says **All set!**, the app opens. Close Terminal.
 
-No Homebrew, no admin password, no security warnings. Run the same line again any time to repair or update.
+No Homebrew, no admin password, no security warnings. Needs macOS 13 (Ventura) or newer. When a new version is out, the app shows an **Update now** button.
 
 ## Use it
 
-1. Copy a YouTube link in your browser.
-2. Open **Cosmos YouTube Downloader** (Launchpad, or Cmd + Space and type its name). The link is filled in for you. Click **Next**.
-3. Choose a format and click **Download**:
+1. Copy one or more links, then click **Paste** (or drag links into the window). Playlists are added as separate videos.
+2. For each video you can:
+   - **Rename** the file (click the name)
+   - **Trim** to a start and end time
+   - Pick the **quality**: Best HD (up to 4K), HD 1080p (faster), Audio MP3 or Audio WAV
+3. Click **Download all**. Two videos download at a time by default (choose 1–3 with **At once**). Cancel any video with its ✕ button.
+4. Pick where files go with **Save to**. Click the magnifier on a finished video to see it in Finder.
 
-| Option | What you get |
-|---|---|
-| HD video for Premiere (best quality) | Highest resolution YouTube has (up to 4K), as an H.264 + AAC MP4. 4K videos take a bit longer because they are converted on your Mac using its built-in video encoder. |
-| HD video for Premiere (1080p, faster) | 1080p H.264 MP4. Usually no conversion at all, so it is quick. |
-| Audio only | MP3 |
+Every video comes out as H.264 + AAC MP4. If the site's file is already H.264 it is kept as is (instant); otherwise it is converted using the Mac's built-in video encoder.
 
-Downloading the same video again replaces the old copy. The app keeps its downloader up to date by itself.
+### Instagram, Facebook and logins
+
+Public posts usually work without logging in. If a site refuses, the video shows **Use my login**: pick your browser once in **Settings** (Cmd + ,) and the app borrows that browser's login. It is never used unless you click it.
+
+## Privacy
+
+Everything runs on your Mac. No accounts, no tracking, nothing is sent to Creation of Cosmos or GitHub. History is stored only on your Mac and can be cleared in Settings.
 
 ## Troubleshooting
 
-- **"The download didn't work"**: check the link, wait a minute, try again.
-- **Still failing**: run the install line again.
-- Click **Open Log** in the error box and send the text to whoever maintains this repo.
+- **A download fails**: check the link and click the retry button. In Settings, **Update now** refreshes the download engine (it also updates itself daily).
+- **Still failing**: run the install line again. It repairs everything.
 
 ## Uninstall
 
-Drag **Cosmos YouTube Downloader** from Applications to the Trash, then delete `~/Library/Application Support/TeamYTDownloader` (in Finder: Cmd + Shift + G, paste the path).
-
----
-
-Made by [Creation of Cosmos](https://www.creationofcosmos.com). Built on [yt-dlp](https://github.com/yt-dlp/yt-dlp), [FFmpeg](https://ffmpeg.org) and [Deno](https://deno.com).
+Drag **Cosmos Media Downloader** from Applications to the Trash, then delete `~/Library/Application Support/TeamYTDownloader` (in Finder: Cmd + Shift + G, paste the path).
 
 ## For maintainers
 
-`install.sh` is generated. Edit the files in `src/` (`ytdl.sh` is the download helper, `app.applescript` is the app, `install-template.sh` is the installer), then run `bash src/build.sh` and commit the updated `install.sh`. Teammates pick up changes by running the install line again.
+- `app/` is the SwiftUI app. Pushing changes to `app/` makes GitHub build it and publish a release (`.github/workflows/build-app.yml`).
+- To ship an update to everyone, raise the number in `app/VERSION`. Apps on that version or lower offer **Update now**.
+- `install.sh` installs the download tools and the latest release.
+
+---
+
+Built on [yt-dlp](https://github.com/yt-dlp/yt-dlp), [FFmpeg](https://ffmpeg.org) and [Deno](https://deno.com).

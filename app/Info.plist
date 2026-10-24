@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleExecutable</key>
+	<string>CosmosMediaDownloader</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.creationofcosmos.mediadownloader</string>
+	<key>CFBundleName</key>
+	<string>Cosmos Media Downloader</string>
+	<key>CFBundleDisplayName</key>
+	<string>Cosmos Media Downloader</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>@VERSION@</string>
+	<key>CFBundleVersion</key>
+	<string>@VERSION@</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>13.0</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.video</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>Made by Creation of Cosmos · creationofcosmos.com</string>
+</dict>
+</plist>
