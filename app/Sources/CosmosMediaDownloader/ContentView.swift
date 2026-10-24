@@ -206,7 +206,7 @@ struct ContentView: View {
     private var emptyState: some View {
         VStack(spacing: 16) {
             Spacer()
-            OrbRing(progress: nil, size: 92, lineWidth: 1)
+            OrbRing(progress: nil, size: 92, lineWidth: 1.3)
                 .padding(.bottom, 10)
             Eyebrow("Ready when you are")
             Text("Bring the source to the edit suite.")
