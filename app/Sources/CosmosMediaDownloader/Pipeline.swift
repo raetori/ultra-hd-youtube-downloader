@@ -199,8 +199,9 @@ enum Pipeline {
             if start > 0 { inputs += ["-ss", String(format: "%.3f", start)] }
             if let length { inputs += ["-t", String(format: "%.3f", length)] }
             inputs += ["-i", format["url"] as! String]
-            let vcodec = format["vcodec"] as? String ?? "none"
-            let acodec = format["acodec"] as? String ?? "none"
+            // Plain video files on generic sites don't report codecs; assume they may hold both.
+            let vcodec = format["vcodec"] as? String ?? "unknown"
+            let acodec = format["acodec"] as? String ?? "unknown"
             if vcodec != "none", videoIndex == nil {
                 videoIndex = i
                 height = format["height"] as? Int
@@ -213,13 +214,13 @@ enum Pipeline {
         var codecArgs: [String]
         var container: [String] = []
         if quality.isAudio {
-            guard let a = audioIndex ?? videoIndex else { return false }
-            maps = ["-map", "\(a):a:0"]
+            guard let a = audioIndex ?? videoIndex else { debugLog?("section: no audio stream"); return false }
+            maps = ["-map", "\(a):a:0?"]
             codecArgs = quality == .mp3 ? ["-c:a", "libmp3lame", "-q:a", "0"] : ["-c:a", "pcm_s24le", "-ar", "48000"]
         } else {
-            guard let v = videoIndex else { return false }
-            maps = ["-map", "\(v):v:0"]
-            if let a = audioIndex { maps += ["-map", "\(a):a:0"] }
+            guard let v = videoIndex else { debugLog?("section: no video stream"); return false }
+            maps = ["-map", "\(v):v:0?"]
+            if let a = audioIndex { maps += ["-map", "\(a):a:0?"] }
             codecArgs = hardwareVideoArgs(height: height, fps: fps) + ["-c:a", "aac", "-b:a", "320k", "-ar", "48000"]
             container = ["-tag:v", "avc1", "-movflags", "+faststart"]
         }
