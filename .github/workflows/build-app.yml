@@ -36,7 +36,7 @@ jobs:
         run: |
           bash install.sh --update || true
           pkill -x CosmosMediaDownloader || true
-          # YouTube blocks cloud machines like this one, so test media is generated here and served locally:
+          # YouTube blocks cloud machines like this one ("confirm you're not a bot"), so test media is generated here and served locally:
           # a 4K VP9/Opus WebM (must be converted), an H.264/AAC MP4 (must be copied untouched) and a trimmed clip.
           F="$HOME/Library/Application Support/TeamYTDownloader/bin/ffmpeg"
           mkdir -p /tmp/media && cd /tmp/media
@@ -45,15 +45,11 @@ jobs:
           python3 -m http.server 8765 --bind 127.0.0.1 >/dev/null 2>&1 &
           for i in $(seq 1 60); do curl -fsI http://127.0.0.1:8765/h264-1080.mp4 >/dev/null 2>&1 && break; sleep 1; done
           cd "$GITHUB_WORKSPACE"
-          # The first couple of yt-dlp runs on a fresh machine can fail against the local server, so warm up first.
-          "dist/Cosmos Media Downloader.app/Contents/MacOS/CosmosMediaDownloader" --selftest \
-            "mp3::http://127.0.0.1:8765/h264-1080.mp4" "mp3::http://127.0.0.1:8765/h264-1080.mp4" >/dev/null 2>&1 || true
           "dist/Cosmos Media Downloader.app/Contents/MacOS/CosmosMediaDownloader" --selftest \
             "best::http://127.0.0.1:8765/vp9-4k.webm" \
             "best::http://127.0.0.1:8765/h264-1080.mp4" \
             "hd1080:2-7:http://127.0.0.1:8765/h264-1080.mp4" \
-            "wav:0-5:http://127.0.0.1:8765/vp9-4k.webm" \
-            "hd1080:10-30:https://www.youtube.com/watch?v=aqz-KE-bpKQ" 2>&1 | tee dist/selftest.txt
+            "wav:0-5:http://127.0.0.1:8765/vp9-4k.webm" 2>&1 | tee dist/selftest.txt
 
       - name: Keep the screenshot on a "ci-preview" pre-release
         if: always()
