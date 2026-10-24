@@ -35,9 +35,10 @@ struct ContentView: View {
         }
         .animation(Theme.ease, value: dropTargeted)
         .sheet(isPresented: $showHistory) { HistoryView().preferredColorScheme(.dark) }
-        .onAppear { updater.check() }
+        .onAppear { updater.startChecking() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             queue.checkClipboard()
+            updater.checkIfStale()
         }
     }
 
