@@ -117,7 +117,7 @@ struct OrbRing: View {
     }
 
     private func ring(trailStart: Double, trailEnd: Double) -> some View {
-        let orb = max(3, size * 0.16)
+        let orb = min(max(3, size * 0.16), 7)
         return ZStack {
             Circle().stroke(Color.white.opacity(0.08), lineWidth: lineWidth)
             // The trail brightens toward the orb, drawn as short arcs so it renders the same everywhere.
