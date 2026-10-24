@@ -1,12 +1,13 @@
--- YouTube Downloader: the app teammates open. The installer compiles this with osacompile.
+-- Cosmos YouTube Downloader: the app teammates open. The installer compiles this with osacompile.
 -- Keep this file plain ASCII so osacompile reads it the same on every Mac.
 
-property appTitle : "YouTube Downloader"
+property appTitle : "Cosmos YouTube Downloader"
+property websiteURL : "https://www.creationofcosmos.com"
 
 on run
 	set helper to quoted form of ((POSIX path of (path to home folder)) & "Library/Application Support/TeamYTDownloader/ytdl.sh")
-	set choices to {"Best quality (original file, up to 4K/8K)", "Premiere-ready MP4, fast (up to 1080p)", "Premiere-ready MP4, full quality (up to 4K, slower)", "Audio only (MP3)"}
-	set modes to {"best", "premiere", "premiere4k", "audio"}
+	set choices to {"HD video for Premiere (best quality, up to 4K)", "HD video for Premiere (1080p, faster)", "Audio only (MP3)"}
+	set modes to {"premiere", "premiere1080", "audio"}
 
 	repeat
 		-- 1. Ask for the link, pre-filled from the clipboard when it holds one.
@@ -16,18 +17,22 @@ on run
 			if clip starts with "http" and (length of clip) < 500 then set defaultURL to clip
 		end try
 		try
-			set dlg to display dialog "Paste a YouTube link:" & return & return & "Only download videos your team has the rights to use." default answer defaultURL with title appTitle buttons {"Cancel", "Next"} default button "Next" cancel button "Cancel" with icon note
+			set dlg to display dialog "Paste a YouTube link:" & return & return & "Every video is saved as an H.264 MP4 that imports straight into Premiere Pro. Only download videos your team has the rights to use." & return & return & "Made by Creation of Cosmos" default answer defaultURL with title appTitle buttons {"creationofcosmos.com", "Cancel", "Next"} default button "Next" cancel button "Cancel" with icon note
 		on error number -128
 			return
 		end try
+		if button returned of dlg is "creationofcosmos.com" then
+			open location websiteURL
+			return
+		end if
 		set theURL to do shell script "printf %s " & quoted form of (text returned of dlg) & " | tr -d '[:space:]'"
 		if theURL does not start with "http" then
 			display dialog "That doesn't look like a link. Copy the address from your browser and try again." with title appTitle buttons {"OK"} default button "OK" with icon caution
 		else
 			-- 2. Pick a format.
-			set picked to choose from list choices with title appTitle with prompt "How do you want it saved? Files go to your Downloads folder." default items {item 2 of choices} OK button name "Download" cancel button name "Cancel"
+			set picked to choose from list choices with title appTitle with prompt "How do you want it saved? Files go to your Downloads folder." default items {item 1 of choices} OK button name "Download" cancel button name "Cancel"
 			if picked is false then return
-			set mode to "best"
+			set mode to "premiere"
 			repeat with i from 1 to count of choices
 				if (item i of choices) is (item 1 of picked) then set mode to item i of modes
 			end repeat

@@ -1,6 +1,8 @@
-# Ultra HD YouTube Downloader (Mac)
+# Cosmos YouTube Downloader (Mac)
 
-Download YouTube videos at the highest quality available (up to 4K/8K), or as H.264 MP4 files ready for Premiere Pro. Files are saved to your Downloads folder.
+<img src="assets/icon.png" width="96" align="right">
+
+Download YouTube videos in HD as **H.264 MP4 files that import straight into Premiere Pro**. No WebM, no conversion step on your side. Made by [Creation of Cosmos](https://www.creationofcosmos.com).
 
 **Please only download videos your team has the rights to use.**
 
@@ -20,14 +22,13 @@ No Homebrew, no admin password, no security warnings. Run the same line again an
 ## Use it
 
 1. Copy a YouTube link in your browser.
-2. Open **YouTube Downloader** (Launchpad, or Cmd + Space and type its name). The link is filled in for you. Click **Next**.
+2. Open **Cosmos YouTube Downloader** (Launchpad, or Cmd + Space and type its name). The link is filled in for you. Click **Next**.
 3. Choose a format and click **Download**:
 
 | Option | What you get |
 |---|---|
-| Best quality | Original YouTube file, up to 4K/8K (.webm/.mkv). Plays in VLC, Resolve and most editors. |
-| Premiere-ready MP4, fast | H.264 MP4 up to 1080p. No conversion, quick. |
-| Premiere-ready MP4, full quality | H.264 MP4 at full resolution (up to 4K). Converted on your Mac, slower for long or 4K videos. |
+| HD video for Premiere (best quality) | Highest resolution YouTube has (up to 4K), as an H.264 + AAC MP4. 4K videos take a bit longer because they are converted on your Mac using its built-in video encoder. |
+| HD video for Premiere (1080p, faster) | 1080p H.264 MP4. Usually no conversion at all, so it is quick. |
 | Audio only | MP3 |
 
 Downloading the same video again replaces the old copy. The app keeps its downloader up to date by itself.
@@ -40,11 +41,11 @@ Downloading the same video again replaces the old copy. The app keeps its downlo
 
 ## Uninstall
 
-Drag **YouTube Downloader** from Applications to the Trash, then delete `~/Library/Application Support/TeamYTDownloader` (in Finder: Cmd + Shift + G, paste the path).
+Drag **Cosmos YouTube Downloader** from Applications to the Trash, then delete `~/Library/Application Support/TeamYTDownloader` (in Finder: Cmd + Shift + G, paste the path).
 
 ---
 
-Built on [yt-dlp](https://github.com/yt-dlp/yt-dlp), [FFmpeg](https://ffmpeg.org) and [Deno](https://deno.com).
+Made by [Creation of Cosmos](https://www.creationofcosmos.com). Built on [yt-dlp](https://github.com/yt-dlp/yt-dlp), [FFmpeg](https://ffmpeg.org) and [Deno](https://deno.com).
 
 ## For maintainers
 
