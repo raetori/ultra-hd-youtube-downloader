@@ -1,9 +1,10 @@
 #!/bin/bash
-# Install YouTube Downloader: sets up yt-dlp, ffmpeg and Deno in your user folder and builds the app.
+# Install Cosmos YouTube Downloader: sets up yt-dlp, ffmpeg and Deno in your user folder and builds the app.
 # No Homebrew, no admin password. Safe to run again to repair or update.
 
 set -u
-APP_NAME="YouTube Downloader"
+APP_NAME="Cosmos YouTube Downloader"
+REPO_RAW="https://raw.githubusercontent.com/raetori/ultra-hd-youtube-downloader/main"
 BASE="$HOME/Library/Application Support/TeamYTDownloader"
 BIN="$BASE/bin"
 TMP="$(mktemp -d)"
@@ -16,7 +17,8 @@ fetch() { curl -fL --retry 3 --connect-timeout 20 --progress-bar -o "$2" "$1"; }
 clear
 cat <<'EOF'
 ==============================================
-   YouTube Downloader setup
+   Cosmos YouTube Downloader setup
+   by Creation of Cosmos - creationofcosmos.com
 ==============================================
 This takes 1-3 minutes and only needs to be done once.
 Reminder: only download videos your team has the rights to use.
@@ -77,15 +79,19 @@ __APPLESCRIPT__
 
 if [ -w /Applications ]; then APPS=/Applications; else APPS="$HOME/Applications"; mkdir -p "$APPS"; fi
 APP="$APPS/$APP_NAME.app"
-rm -rf "$APP"
+rm -rf "$APP" "$APPS/YouTube Downloader.app"
 osacompile -o "$APP" "$TMP/app.applescript" || fail "couldn't build the app."
 /usr/libexec/PlistBuddy -c "Set :CFBundleName $APP_NAME" "$APP/Contents/Info.plist" 2>/dev/null
-/usr/libexec/PlistBuddy -c "Add :CFBundleIdentifier string com.team.youtubedownloader" "$APP/Contents/Info.plist" 2>/dev/null
+/usr/libexec/PlistBuddy -c "Add :CFBundleIdentifier string com.creationofcosmos.youtubedownloader" "$APP/Contents/Info.plist" 2>/dev/null
+# Cosmos icon (cosmetic, so a failed download is ignored).
+if fetch "$REPO_RAW/assets/AppIcon.icns" "$TMP/AppIcon.icns" 2>/dev/null; then
+  cp -f "$TMP/AppIcon.icns" "$APP/Contents/Resources/applet.icns" && touch "$APP"
+fi
 
 say "All set!"
 cat <<EOF
 "$APP_NAME" is now in your $( [ "$APPS" = /Applications ] && echo "Applications folder" || echo "Applications folder (inside your home folder)" ).
-Open it from Launchpad or Spotlight (Cmd + Space, type "YouTube Downloader").
+Open it from Launchpad or Spotlight (Cmd + Space, type "Cosmos").
 Tip: drag it to your Dock for one-click access.
 
 Opening it now... You can close this window.
