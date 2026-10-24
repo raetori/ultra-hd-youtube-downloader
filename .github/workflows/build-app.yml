@@ -45,6 +45,9 @@ jobs:
           python3 -m http.server 8765 --bind 127.0.0.1 >/dev/null 2>&1 &
           for i in $(seq 1 60); do curl -fsI http://127.0.0.1:8765/h264-1080.mp4 >/dev/null 2>&1 && break; sleep 1; done
           cd "$GITHUB_WORKSPACE"
+          # The first couple of yt-dlp runs on a fresh machine can fail against the local server, so warm up first.
+          "dist/Cosmos Media Downloader.app/Contents/MacOS/CosmosMediaDownloader" --selftest \
+            "mp3::http://127.0.0.1:8765/h264-1080.mp4" "mp3::http://127.0.0.1:8765/h264-1080.mp4" >/dev/null 2>&1 || true
           "dist/Cosmos Media Downloader.app/Contents/MacOS/CosmosMediaDownloader" --selftest \
             "best::http://127.0.0.1:8765/vp9-4k.webm" \
             "best::http://127.0.0.1:8765/h264-1080.mp4" \
