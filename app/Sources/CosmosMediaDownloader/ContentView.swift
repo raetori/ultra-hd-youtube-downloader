@@ -14,23 +14,27 @@ struct ContentView: View {
         VStack(spacing: 0) {
             header
             optionsBar
-            Divider()
             banners
-            if queue.items.isEmpty { emptyState } else { list }
-            Divider()
+            if queue.items.isEmpty { emptyState.transition(.opacity) } else { list.transition(.opacity) }
             footer
         }
+        .animation(Theme.ease, value: queue.items.isEmpty)
         .frame(minWidth: 820, minHeight: 560)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(Theme.ink)
+        .preferredColorScheme(.dark)
         .onDrop(of: [.url, .plainText], isTargeted: $dropTargeted, perform: handleDrop)
         .overlay {
             if dropTargeted {
-                RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.accent, style: StrokeStyle(lineWidth: 3, dash: [8]))
-                    .padding(8)
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(Theme.gold.opacity(0.7), style: StrokeStyle(lineWidth: 1.2, dash: [6, 6]))
+                    .shadow(color: Theme.gold.opacity(0.5), radius: 12)
+                    .padding(10)
                     .allowsHitTesting(false)
+                    .transition(.opacity)
             }
         }
-        .sheet(isPresented: $showHistory) { HistoryView() }
+        .animation(Theme.ease, value: dropTargeted)
+        .sheet(isPresented: $showHistory) { HistoryView().preferredColorScheme(.dark) }
         .onAppear { updater.check() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             queue.checkClipboard()
@@ -40,34 +44,31 @@ struct ContentView: View {
     // MARK: Header
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .center, spacing: 14) {
                 CosmosMark()
                     .fill(.white)
-                    .frame(width: 30, height: 30)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Cosmos Media Downloader")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(.white)
-                    Text("From the source to the edit suite · HD files ready for Premiere Pro")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.white.opacity(0.6))
+                    .frame(width: 28, height: 28)
+                    .shadow(color: Theme.gold.opacity(0.35), radius: 8)
+                VStack(alignment: .leading, spacing: 5) {
+                    Eyebrow("Visual Lab · Media Downloader")
+                    Wordmark(size: 18)
                 }
                 Spacer()
                 Button { showHistory = true } label: {
                     Label("History", systemImage: "clock.arrow.circlepath")
                 }
-                .buttonStyle(.borderless)
-                .foregroundStyle(.white.opacity(0.85))
+                .buttonStyle(GhostButtonStyle())
+                OpenSettingsButton(label: "Settings", ghost: true)
             }
 
-            HStack(spacing: 8) {
-                HStack(spacing: 8) {
-                    Image(systemName: "link").foregroundStyle(.white.opacity(0.5))
+            HStack(spacing: 10) {
+                HStack(spacing: 10) {
+                    Image(systemName: "link").font(.system(size: 12)).foregroundStyle(Theme.gold.opacity(0.8))
                     ZStack(alignment: .leading) {
                         if linkText.isEmpty {
-                            Text("Paste links from YouTube, TikTok, Instagram, Facebook… (several at once is fine)")
-                                .foregroundStyle(.white.opacity(0.45))
+                            Text("Paste links from YouTube, TikTok, Instagram, Facebook… several at once is fine")
+                                .foregroundStyle(.white.opacity(0.38))
                                 .allowsHitTesting(false)
                         }
                         TextField("", text: $linkText)
@@ -77,32 +78,41 @@ struct ContentView: View {
                     }
                     .font(.system(size: 13))
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 9)
-                .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(.white.opacity(0.08)))
-                .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(.white.opacity(0.12)))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(Capsule().fill(.white.opacity(0.05)))
+                .overlay(Capsule().strokeBorder(.white.opacity(0.12), lineWidth: 0.8))
 
                 Button(action: pasteFromClipboard) {
-                    Label("Paste", systemImage: "doc.on.clipboard")
+                    Text("Paste links  →")
                 }
                 .buttonStyle(PrimaryButtonStyle())
                 .keyboardShortcut("v", modifiers: [.command, .shift])
                 .help("Add every link on the clipboard (⇧⌘V)")
             }
             if let addMessage {
-                Text(addMessage).font(.system(size: 11)).foregroundStyle(.white.opacity(0.65))
+                Text(addMessage).font(.mono(10)).foregroundStyle(.white.opacity(0.55)).transition(.opacity)
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 34)
-        .padding(.bottom, 16)
-        .background(ZStack { Theme.space; Starfield() })
+        .animation(Theme.ease, value: addMessage)
+        .padding(.horizontal, 24)
+        .padding(.top, 38)
+        .padding(.bottom, 22)
+        .background(
+            ZStack {
+                Theme.space
+                Starfield()
+                HorizonGlow()
+                // Fade into the window so there is no hard edge between header and list.
+                LinearGradient(colors: [.clear, Theme.ink], startPoint: .center, endPoint: .bottom)
+            }
+        )
     }
 
     private var optionsBar: some View {
-        HStack(spacing: 18) {
-            HStack(spacing: 6) {
-                Text("Quality").font(.system(size: 12)).foregroundStyle(.secondary)
+        HStack(spacing: 22) {
+            HStack(spacing: 8) {
+                Eyebrow("Quality", tint: Theme.textDim)
                 Picker("", selection: $settings.defaultQuality) {
                     ForEach(Quality.allCases) { Text($0.label).tag($0) }
                 }
@@ -111,21 +121,21 @@ struct ContentView: View {
                 .help("Used for links you add from now on. Each video can also be changed on its own.")
             }
 
-            HStack(spacing: 6) {
-                Text("Save to").font(.system(size: 12)).foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                Eyebrow("Save to", tint: Theme.textDim)
                 Button { settings.chooseFolder() } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "folder.fill").foregroundStyle(Theme.accent)
+                    HStack(spacing: 5) {
+                        Image(systemName: "folder").foregroundStyle(Theme.gold)
                         Text(settings.saveFolder.lastPathComponent).lineLimit(1)
-                        Image(systemName: "chevron.down").font(.system(size: 8, weight: .bold)).foregroundStyle(.secondary)
+                        Image(systemName: "chevron.down").font(.system(size: 7, weight: .bold)).foregroundStyle(.secondary)
                     }
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(GhostButtonStyle())
                 .help(settings.saveFolder.path)
             }
 
-            HStack(spacing: 6) {
-                Text("At once").font(.system(size: 12)).foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                Eyebrow("At once", tint: Theme.textDim)
                 Picker("", selection: $settings.maxConcurrent) {
                     ForEach(1...3, id: \.self) { Text("\($0)").tag($0) }
                 }
@@ -136,43 +146,45 @@ struct ContentView: View {
             }
             Spacer()
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, 24)
         .padding(.vertical, 10)
     }
 
     @ViewBuilder
     private var banners: some View {
-        if queue.toolsMissing {
-            Banner(symbol: "exclamationmark.triangle.fill", tint: .orange,
-                   text: "Setup isn't finished on this Mac. Run the install line in Terminal once, then reopen the app.",
-                   buttonTitle: "Copy install line") {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(Tools.installCommand, forType: .string)
+        VStack(spacing: 6) {
+            if queue.toolsMissing {
+                Banner(symbol: "exclamationmark.triangle", tint: Theme.ember,
+                       text: "Setup isn't finished on this Mac. Run the install line in Terminal once, then reopen the app.",
+                       buttonTitle: "Copy install line") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(Tools.installCommand, forType: .string)
+                }
+            }
+            if !queue.clipboardLinks.isEmpty {
+                let count = queue.clipboardLinks.count
+                HStack(spacing: 10) {
+                    Image(systemName: "doc.on.clipboard").foregroundStyle(Theme.gold)
+                    Text(count == 1 ? "You copied a link: \(queue.clipboardLinks[0])" : "You copied \(count) links.")
+                        .font(.system(size: 12))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Spacer()
+                    Button("Not now") { queue.clipboardLinks = [] }.buttonStyle(GhostButtonStyle())
+                    Button(count == 1 ? "Add it" : "Add all") { queue.acceptClipboardLinks() }.buttonStyle(PrimaryButtonStyle())
+                }
+                .modifier(BannerShape(tint: Theme.gold))
+            }
+            if let version = updater.availableVersion {
+                Banner(symbol: "sparkles", tint: Theme.gold,
+                       text: "Version \(version) is available.",
+                       buttonTitle: updater.updating ? "Updating…" : "Update now") {
+                    updater.installUpdate()
+                }
             }
         }
-        if !queue.clipboardLinks.isEmpty {
-            let count = queue.clipboardLinks.count
-            HStack(spacing: 10) {
-                Image(systemName: "doc.on.clipboard").foregroundStyle(Theme.accent)
-                Text(count == 1 ? "You copied a link: \(queue.clipboardLinks[0])" : "You copied \(count) links.")
-                    .font(.system(size: 12))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                Spacer()
-                Button("Not now") { queue.clipboardLinks = [] }.buttonStyle(.borderless)
-                Button(count == 1 ? "Add it" : "Add all") { queue.acceptClipboardLinks() }
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 9)
-            .background(Theme.accent.opacity(0.1))
-        }
-        if let version = updater.availableVersion {
-            Banner(symbol: "sparkles", tint: Theme.accent,
-                   text: "Version \(version) is available.",
-                   buttonTitle: updater.updating ? "Updating…" : "Update now") {
-                updater.installUpdate()
-            }
-        }
+        .padding(.horizontal, 24)
+        .animation(Theme.ease, value: queue.clipboardLinks)
     }
 
     // MARK: Queue
@@ -182,64 +194,74 @@ struct ContentView: View {
             LazyVStack(spacing: 10) {
                 ForEach(queue.items) { item in
                     ItemRow(item: item)
+                        .transition(.asymmetric(insertion: .opacity.combined(with: .offset(y: 8)), removal: .opacity))
                 }
             }
-            .padding(.horizontal, 20)
+            .animation(Theme.ease, value: queue.items.map(\.id))
+            .padding(.horizontal, 24)
             .padding(.vertical, 14)
         }
     }
 
     private var emptyState: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 16) {
             Spacer()
-            ZStack {
-                Circle().fill(Theme.accent.opacity(0.12)).frame(width: 88, height: 88)
-                Image(systemName: "arrow.down.circle").font(.system(size: 38, weight: .light)).foregroundStyle(Theme.accent)
-            }
-            Text("Add links to get started").font(.system(size: 17, weight: .semibold))
-            Text("Copy one or more links, then click Paste. You can also drag links here.\nRename, trim and pick the quality for each video before downloading.")
+            OrbRing(progress: nil, size: 92, lineWidth: 1)
+                .padding(.bottom, 10)
+            Eyebrow("Ready when you are")
+            Text("Bring the source to the edit suite.")
+                .font(.system(size: 22, weight: .medium))
+                .tracking(-0.4)
+                .foregroundStyle(.white)
+            Text("Copy one or more links, then click Paste links. You can also drag links here.\nRename, trim and pick the quality for each video before downloading.")
                 .font(.system(size: 12))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.textDim)
                 .multilineTextAlignment(.center)
+                .lineSpacing(3)
             Spacer()
         }
         .frame(maxWidth: .infinity)
     }
 
     private var footer: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 14) {
             Link(destination: Tools.website) {
-                HStack(spacing: 6) {
-                    CosmosMark().fill(.secondary).frame(width: 13, height: 13)
-                    Text("Made by Creation of Cosmos").font(.system(size: 11))
+                HStack(spacing: 7) {
+                    CosmosMark().fill(.white.opacity(0.6)).frame(width: 12, height: 12)
+                    Text("CREATION OF COSMOS").font(.system(size: 9.5, weight: .regular)).tracking(2.6)
                 }
             }
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.white.opacity(0.6))
             .help("creationofcosmos.com")
 
-            Text(statusText).font(.system(size: 11)).foregroundStyle(.secondary)
+            Text(statusText.uppercased()).font(.mono(9.5)).tracking(1.4).foregroundStyle(Theme.gold.opacity(0.8))
             Spacer()
 
             if queue.finishedCount > 0 {
                 Button("Clear finished") { queue.clearFinished() }
-                    .buttonStyle(.borderless)
-                    .font(.system(size: 12))
+                    .buttonStyle(GhostButtonStyle())
             }
             if queue.activeCount + queue.waitingCount > 0 {
                 Button("Stop all") { queue.cancelAll() }
+                    .buttonStyle(GhostButtonStyle())
             }
             Button {
                 queue.startAll()
             } label: {
-                Label(queue.readyCount > 1 ? "Download all (\(queue.readyCount))" : "Download", systemImage: "arrow.down.circle.fill")
+                Text(queue.readyCount > 1 ? "Download all (\(queue.readyCount))  →" : "Download  →")
             }
             .buttonStyle(PrimaryButtonStyle())
             .disabled(queue.items.allSatisfy { $0.state != .ready })
             .keyboardShortcut(.return, modifiers: .command)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
-        .background(.bar)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 14)
+        .background(
+            ZStack(alignment: .top) {
+                Color.black.opacity(0.6)
+                LinearGradient(colors: [.clear, Theme.hairline, .clear], startPoint: .leading, endPoint: .trailing).frame(height: 1)
+            }
+        )
     }
 
     private var statusText: String {
@@ -247,7 +269,7 @@ struct ContentView: View {
         if queue.activeCount > 0 { parts.append("\(queue.activeCount) downloading") }
         if queue.waitingCount > 0 { parts.append("\(queue.waitingCount) waiting") }
         if queue.finishedCount > 0 { parts.append("\(queue.finishedCount) done") }
-        return parts.isEmpty ? "" : "· " + parts.joined(separator: ", ")
+        return parts.joined(separator: " · ")
     }
 
     // MARK: Adding links
@@ -293,10 +315,21 @@ struct Banner: View {
             Image(systemName: symbol).foregroundStyle(tint)
             Text(text).font(.system(size: 12))
             Spacer()
-            Button(buttonTitle, action: action)
+            Button(buttonTitle, action: action).buttonStyle(PrimaryButtonStyle())
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 9)
-        .background(tint.opacity(0.1))
+        .modifier(BannerShape(tint: tint))
+    }
+}
+
+struct BannerShape: ViewModifier {
+    let tint: Color
+
+    func body(content: Content) -> some View {
+        content
+            .padding(.horizontal, 16)
+            .padding(.vertical, 9)
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(tint.opacity(0.07)))
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(tint.opacity(0.22), lineWidth: 0.8))
+            .transition(.opacity.combined(with: .offset(y: -6)))
     }
 }

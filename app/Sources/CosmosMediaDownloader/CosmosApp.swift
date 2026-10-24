@@ -21,7 +21,10 @@ struct CosmosMediaDownloaderApp: App {
     init() {
         let settings = AppSettings()
         _settings = StateObject(wrappedValue: settings)
-        _queue = StateObject(wrappedValue: QueueManager(settings: settings))
+        let queue = QueueManager(settings: settings)
+        // Used by CI to photograph the queue with a few sample rows.
+        if CommandLine.arguments.contains("--demo") { queue.loadDemo() }
+        _queue = StateObject(wrappedValue: queue)
     }
 
     var body: some Scene {
@@ -49,6 +52,7 @@ struct CosmosMediaDownloaderApp: App {
                 .environmentObject(settings)
                 .environmentObject(queue)
                 .tint(Theme.accent)
+                .preferredColorScheme(.dark)
         }
     }
 }

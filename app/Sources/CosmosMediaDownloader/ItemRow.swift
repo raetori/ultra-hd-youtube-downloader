@@ -14,7 +14,9 @@ struct ItemRow: View {
                 HStack(spacing: 6) {
                     SiteBadge(site: item.site)
                     Text(item.title)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 13.5, weight: .medium))
+                        .tracking(-0.1)
+                        .foregroundStyle(.white)
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .help(item.url)
@@ -26,9 +28,15 @@ struct ItemRow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             actions
         }
-        .padding(12)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.card))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(borderColor, lineWidth: 1))
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Theme.card.opacity(hovering ? 1.6 : 1))
+        )
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(borderColor, lineWidth: 0.8))
+        .shadow(color: item.state.isActive ? Theme.gold.opacity(0.12) : .clear, radius: 18)
+        .animation(Theme.ease, value: item.state)
+        .animation(Theme.ease, value: hovering)
         .onHover { hovering = $0 }
         .contextMenu {
             Button("Copy Link") {
@@ -43,9 +51,9 @@ struct ItemRow: View {
 
     private var borderColor: Color {
         switch item.state {
-        case .failed: return .red.opacity(0.35)
-        case .done: return .green.opacity(0.3)
-        case .downloading, .converting: return Theme.accent.opacity(0.4)
+        case .failed: return Theme.danger.opacity(0.35)
+        case .done: return Theme.gold.opacity(0.22)
+        case .downloading, .converting: return Theme.gold.opacity(0.4)
         default: return Theme.hairline
         }
     }
@@ -65,14 +73,15 @@ struct ItemRow: View {
                 }
             }
             .frame(width: 136, height: 77)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(Theme.hairline, lineWidth: 0.8))
 
             if let duration = item.duration {
                 Text(TimeFormat.string(duration))
-                    .font(.system(size: 10, weight: .semibold).monospacedDigit())
+                    .font(.mono(9.5))
                     .padding(.horizontal, 5)
                     .padding(.vertical, 2)
-                    .background(RoundedRectangle(cornerRadius: 4).fill(.black.opacity(0.7)))
+                    .background(Capsule().fill(.black.opacity(0.7)))
                     .foregroundStyle(.white)
                     .padding(5)
             }
@@ -82,8 +91,8 @@ struct ItemRow: View {
     private var placeholder: some View {
         ZStack {
             Theme.space
-            if item.state == .fetching { ProgressView().controlSize(.small).tint(.white) }
-            else { Image(systemName: item.quality.symbol).foregroundStyle(.white.opacity(0.4)) }
+            if item.state == .fetching { OrbRing(progress: nil, size: 26) }
+            else { Image(systemName: item.quality.symbol).foregroundStyle(Theme.gold.opacity(0.5)) }
         }
     }
 
@@ -96,9 +105,9 @@ struct ItemRow: View {
                 .disabled(!item.state.canEdit)
             Text("." + item.quality.fileExtension).font(.system(size: 12)).foregroundStyle(.secondary)
         }
-        .padding(.horizontal, 7)
+        .padding(.horizontal, 9)
         .padding(.vertical, 4)
-        .background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(item.state.canEdit ? 0.05 : 0.02)))
+        .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(Color.white.opacity(item.state.canEdit ? 0.05 : 0.02)))
         .help("Rename the file before downloading")
     }
 
@@ -121,15 +130,15 @@ struct ItemRow: View {
                 Label(item.trimLabel ?? "Trim", systemImage: "scissors").font(.system(size: 11))
             }
             .buttonStyle(.borderless)
-            .foregroundStyle(item.isTrimmed ? Theme.accent : .secondary)
+            .foregroundStyle(item.isTrimmed ? Theme.gold : Theme.textDim)
             .disabled(!item.state.canEdit)
             .popover(isPresented: $showTrim, arrowEdge: .bottom) { TrimEditor(item: item) }
 
             if let resolution = item.resolution, !item.quality.isAudio {
                 Chip(text: item.quality == .hd1080 && ["4K", "8K", "1440p"].contains(resolution) ? "1080p" : resolution, tint: Theme.accent)
             }
-            if let badge = item.quality.outputBadge { Chip(text: badge, symbol: "checkmark.seal.fill", tint: .green) }
-            if item.useLogin { Chip(text: "Using \(settings.loginBrowserName) login", symbol: "person.crop.circle", tint: .orange) }
+            if let badge = item.quality.outputBadge { Chip(text: badge, symbol: "checkmark.seal", tint: Theme.textDim) }
+            if item.useLogin { Chip(text: "Using \(settings.loginBrowserName) login", symbol: "person.crop.circle", tint: Theme.ember) }
         }
     }
 
@@ -137,15 +146,15 @@ struct ItemRow: View {
     private var status: some View {
         switch item.state {
         case .downloading, .converting:
-            VStack(alignment: .leading, spacing: 3) {
-                ProgressView(value: item.progress).tint(item.state == .converting ? .green : Theme.accent)
-                Text(item.detail).font(.system(size: 11).monospacedDigit()).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 4) {
+                OrbBar(progress: item.progress)
+                Text(item.detail.uppercased()).font(.mono(9.5)).tracking(0.8).foregroundStyle(Theme.gold.opacity(0.85))
             }
         case .failed:
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.errorMessage ?? "Something went wrong.")
                     .font(.system(size: 11))
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Theme.danger)
                     .lineLimit(2)
                     .textSelection(.enabled)
                 if item.needsLogin && !item.useLogin {
@@ -162,11 +171,11 @@ struct ItemRow: View {
                 }
             }
         case .done:
-            Label(item.detail, systemImage: "checkmark.circle.fill")
+            Label(item.detail, systemImage: "checkmark.circle")
                 .font(.system(size: 11))
-                .foregroundStyle(.green)
+                .foregroundStyle(Theme.gold)
         default:
-            Text(item.detail).font(.system(size: 11)).foregroundStyle(.secondary)
+            Text(item.detail).font(.system(size: 11)).foregroundStyle(Theme.textDim)
         }
     }
 
@@ -174,29 +183,44 @@ struct ItemRow: View {
         VStack(spacing: 6) {
             switch item.state {
             case .ready, .cancelled:
-                iconButton("arrow.down.circle.fill", help: "Download", tint: Theme.accent) { queue.start(item) }
+                iconButton("arrow.down", help: "Download", tint: Theme.gold) { queue.start(item) }
             case .failed:
-                iconButton("arrow.clockwise.circle.fill", help: "Try again", tint: Theme.accent) { queue.retry(item) }
-            case .queued, .downloading, .converting:
-                iconButton("xmark.circle.fill", help: "Cancel", tint: .secondary) { queue.cancel(item) }
+                iconButton("arrow.clockwise", help: "Try again", tint: Theme.gold) { queue.retry(item) }
+            case .downloading, .converting:
+                Button { queue.cancel(item) } label: {
+                    ZStack {
+                        OrbRing(progress: item.progress, size: 26)
+                        Image(systemName: "xmark").font(.system(size: 8, weight: .semibold))
+                            .foregroundStyle(.white.opacity(hovering ? 0.9 : 0))
+                    }
+                }
+                .buttonStyle(.borderless)
+                .help("Cancel")
+            case .queued:
+                iconButton("xmark", help: "Cancel", tint: Theme.textDim) { queue.cancel(item) }
             case .done:
-                iconButton("magnifyingglass.circle.fill", help: "Show in Finder", tint: Theme.accent) {
+                iconButton("magnifyingglass", help: "Show in Finder", tint: Theme.gold) {
                     if let file = item.outputURL { NSWorkspace.shared.activateFileViewerSelecting([file]) }
                 }
             case .fetching:
-                ProgressView().controlSize(.small).frame(width: 24, height: 24)
+                OrbRing(progress: nil, size: 22).frame(width: 28, height: 28)
             }
             if !item.state.isActive && item.state != .queued {
-                iconButton("trash", help: "Remove from list", tint: .secondary, size: 13) { queue.remove(item) }
+                iconButton("trash", help: "Remove from list", tint: Theme.textDim, size: 11, ring: false) { queue.remove(item) }
                     .opacity(hovering ? 1 : 0.35)
             }
         }
-        .frame(width: 30)
+        .frame(width: 32)
     }
 
-    private func iconButton(_ symbol: String, help: String, tint: Color, size: CGFloat = 22, action: @escaping () -> Void) -> some View {
+    private func iconButton(_ symbol: String, help: String, tint: Color, size: CGFloat = 11, ring: Bool = true, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: symbol).font(.system(size: size)).foregroundStyle(tint)
+            Image(systemName: symbol)
+                .font(.system(size: size, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: 28, height: 28)
+                .background(Circle().strokeBorder(tint.opacity(ring ? 0.4 : 0), lineWidth: 0.8))
+                .contentShape(Circle())
         }
         .buttonStyle(.borderless)
         .help(help)
@@ -213,6 +237,7 @@ struct ItemRow: View {
 /// Opens the app's Settings window from inside a view (works on macOS 13 and later).
 struct OpenSettingsButton: View {
     let label: String
+    var ghost = false
 
     var body: some View {
         Button(label) {
@@ -222,8 +247,20 @@ struct OpenSettingsButton: View {
                 NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
             }
         }
-        .buttonStyle(.link)
-        .font(.system(size: 11))
+        .modifier(SettingsButtonLook(ghost: ghost))
+    }
+}
+
+private struct SettingsButtonLook: ViewModifier {
+    let ghost: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if ghost {
+            content.buttonStyle(GhostButtonStyle())
+        } else {
+            content.buttonStyle(.link).font(.system(size: 11))
+        }
     }
 }
 
@@ -236,7 +273,7 @@ struct TrimEditor: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Trim").font(.headline)
+            Eyebrow("Trim")
             Text("Keep only part of the video. Use minutes:seconds, like 1:30.\nLeave End empty to keep everything after Start.")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
@@ -249,7 +286,7 @@ struct TrimEditor: View {
                 Text("Full length: \(TimeFormat.string(duration))").font(.system(size: 11)).foregroundStyle(.secondary)
             }
             if let error {
-                Text(error).font(.system(size: 11)).foregroundStyle(.red)
+                Text(error).font(.system(size: 11)).foregroundStyle(Theme.danger)
             }
             HStack {
                 Button("Remove trim") {
