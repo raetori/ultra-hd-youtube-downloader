@@ -210,7 +210,7 @@ final class QueueManager: ObservableObject {
 
         let url = item.url, quality = item.quality, parts = item.expectedParts
         let useLogin = item.useLogin, browser = settings.loginBrowser
-        let trimStart = item.trimStart, trimEnd = item.trimEnd
+        let trimStart = item.trimStart, trimEnd = item.trimEnd, duration = item.duration
         let folder = settings.saveFolder
         let work = Tools.workRoot.appendingPathComponent(item.id.uuidString)
 
@@ -228,14 +228,22 @@ final class QueueManager: ObservableObject {
                 try FileManager.default.createDirectory(at: work, withIntermediateDirectories: true)
                 defer { try? FileManager.default.removeItem(at: work) }
 
-                let downloaded = try await Pipeline.download(url: url, quality: quality, expectedParts: parts,
-                                                             useLogin: useLogin, browser: browser,
-                                                             workDir: work, handle: handle, onProgress: report)
-                item.state = .converting
-                item.progress = 0
                 let temp = work.appendingPathComponent("final." + quality.fileExtension)
-                try await Pipeline.finalize(input: downloaded, quality: quality, trimStart: trimStart, trimEnd: trimEnd,
-                                            output: temp, handle: handle, onProgress: report)
+                var done = false
+                if trimStart != nil || trimEnd != nil {
+                    done = try await Pipeline.downloadSection(url: url, quality: quality, trimStart: trimStart, trimEnd: trimEnd,
+                                                              duration: duration, useLogin: useLogin, browser: browser,
+                                                              output: temp, handle: handle, onProgress: report)
+                }
+                if !done {
+                    let downloaded = try await Pipeline.download(url: url, quality: quality, expectedParts: parts,
+                                                                 useLogin: useLogin, browser: browser,
+                                                                 workDir: work, handle: handle, onProgress: report)
+                    item.state = .converting
+                    item.progress = 0
+                    try await Pipeline.finalize(input: downloaded, quality: quality, trimStart: trimStart, trimEnd: trimEnd,
+                                                output: temp, handle: handle, onProgress: report)
+                }
 
                 try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
                 let name = item.fileName.isEmpty ? item.title : item.fileName
