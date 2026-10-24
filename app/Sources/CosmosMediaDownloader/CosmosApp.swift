@@ -2,6 +2,16 @@ import AppKit
 import SwiftUI
 
 @main
+enum Entry {
+    static func main() {
+        if CommandLine.arguments.contains("--selftest") {
+            SelfTest.run(Array(CommandLine.arguments.drop(while: { $0 != "--selftest" }).dropFirst()))
+        } else {
+            CosmosMediaDownloaderApp.main()
+        }
+    }
+}
+
 struct CosmosMediaDownloaderApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var settings: AppSettings

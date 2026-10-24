@@ -31,6 +31,18 @@ jobs:
           screencapture -x dist/screenshot.png
           pkill -x CosmosMediaDownloader || true
 
+      - name: End-to-end test (real downloads with the Mac's own encoder)
+        continue-on-error: true
+        run: |
+          bash install.sh --update || true
+          pkill -x CosmosMediaDownloader || true
+          # Open movies from the Blender Foundation (Creative Commons): a direct H.264 file and a YouTube upload,
+          # trimmed so the YouTube one has to be re-encoded.
+          "dist/Cosmos Media Downloader.app/Contents/MacOS/CosmosMediaDownloader" --selftest \
+            "best::https://download.blender.org/peach/bigbuckbunny_movies/BigBuckBunny_320x180.mp4" \
+            "hd1080:10-30:https://www.youtube.com/watch?v=aqz-KE-bpKQ" \
+            "mp3:0-15:https://www.youtube.com/watch?v=aqz-KE-bpKQ" 2>&1 | tee dist/selftest.txt
+
       - name: Keep the screenshot on a "ci-preview" pre-release
         if: always()
         continue-on-error: true
@@ -41,6 +53,7 @@ jobs:
           gh release view ci-preview >/dev/null 2>&1 || \
             gh release create ci-preview --prerelease --title "CI preview" --notes "Screenshots from automated test launches. Not for installing."
           gh release upload ci-preview dist/screenshot.png --clobber
+          [ -f dist/selftest.txt ] && gh release upload ci-preview dist/selftest.txt --clobber
 
       - name: Publish release
         env:
