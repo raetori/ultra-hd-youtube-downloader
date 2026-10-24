@@ -49,7 +49,9 @@ jobs:
             "best::http://127.0.0.1:8765/vp9-4k.webm" \
             "best::http://127.0.0.1:8765/h264-1080.mp4" \
             "hd1080:2-7:http://127.0.0.1:8765/h264-1080.mp4" \
-            "wav:0-5:http://127.0.0.1:8765/vp9-4k.webm" 2>&1 | tee dist/selftest.txt
+            "wav:0-5:http://127.0.0.1:8765/vp9-4k.webm" \
+            "prores::http://127.0.0.1:8765/vp9-4k.webm" \
+            "prores:3-8:http://127.0.0.1:8765/h264-1080.mp4" 2>&1 | tee dist/selftest.txt
 
       - name: Keep the screenshot on a "ci-preview" pre-release
         if: always()

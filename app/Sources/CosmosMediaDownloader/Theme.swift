@@ -3,7 +3,9 @@ import SwiftUI
 enum Theme {
     static let accent = Color(red: 0.49, green: 0.38, blue: 1.0)
     static let accentDeep = Color(red: 0.30, green: 0.20, blue: 0.85)
-    static let space = LinearGradient(colors: [Color(red: 0.07, green: 0.07, blue: 0.11), Color(red: 0.13, green: 0.10, blue: 0.22)],
+    /// Near-black like creationofcosmos.com, with a faint violet glow toward one corner.
+    static let space = LinearGradient(colors: [Color(red: 0.0, green: 0.0, blue: 0.0), Color(red: 0.03, green: 0.03, blue: 0.05),
+                                               Color(red: 0.09, green: 0.06, blue: 0.16)],
                                       startPoint: .topLeading, endPoint: .bottomTrailing)
     static let card = Color(nsColor: .controlBackgroundColor)
     static let hairline = Color.primary.opacity(0.08)
@@ -89,5 +91,26 @@ struct PrimaryButtonStyle: ButtonStyle {
                     .fill(LinearGradient(colors: [Theme.accent, Theme.accentDeep], startPoint: .top, endPoint: .bottom))
                     .opacity(enabled ? (configuration.isPressed ? 0.8 : 1) : 0.4)
             )
+    }
+}
+
+/// A quiet field of stars behind the header. Positions come from a fixed seed so it never flickers.
+struct Starfield: View {
+    var body: some View {
+        Canvas { context, size in
+            var seed: UInt64 = 0x9E3779B97F4A7C15
+            func next() -> Double {
+                seed = seed &* 6364136223846793005 &+ 1442695040888963407
+                return Double(seed >> 33) / Double(UInt64(1) << 31)
+            }
+            for _ in 0..<140 {
+                let x = next() * size.width
+                let y = next() * size.height
+                let r = 0.4 + next() * 1.1
+                let alpha = 0.15 + next() * 0.55
+                context.fill(Path(ellipseIn: CGRect(x: x, y: y, width: r, height: r)), with: .color(.white.opacity(alpha)))
+            }
+        }
+        .allowsHitTesting(false)
     }
 }

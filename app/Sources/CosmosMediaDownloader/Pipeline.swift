@@ -221,8 +221,8 @@ enum Pipeline {
             guard let v = videoIndex else { debugLog?("section: no video stream"); return false }
             maps = ["-map", "\(v):v:0?"]
             if let a = audioIndex { maps += ["-map", "\(a):a:0?"] }
-            codecArgs = hardwareVideoArgs(height: height, fps: fps) + ["-c:a", "aac", "-b:a", "320k", "-ar", "48000"]
-            container = ["-tag:v", "avc1", "-movflags", "+faststart"]
+            codecArgs = videoArgs(quality, height: height, fps: fps) + audioArgs(quality)
+            container = containerArgs(quality)
         }
 
         let total = length ?? 0
@@ -237,9 +237,8 @@ enum Pipeline {
         onProgress(0, "Downloading and converting the trimmed part…")
         var run = try await attempt(codecArgs)
         if handle.cancelled { throw CancellationError() }
-        if run.status != 0, codecArgs.contains("h264_videotoolbox") {
-            codecArgs = ["-c:v", "libx264", "-preset", "fast", "-crf", "18", "-profile:v", "high", "-pix_fmt", "yuv420p",
-                         "-c:a", "aac", "-b:a", "320k", "-ar", "48000"]
+        if run.status != 0, let software = softwareFallback(codecArgs) {
+            codecArgs = software + audioArgs(quality)
             run = try await attempt(codecArgs)
             if handle.cancelled { throw CancellationError() }
         }
@@ -281,7 +280,7 @@ enum Pipeline {
         return probe
     }
 
-    /// Produces the final file: an H.264 + AAC MP4 that Premiere imports, or MP3/WAV audio.
+    /// Produces the final file: an H.264 + AAC MP4 that Premiere imports, a ProRes MOV, or MP3/WAV audio.
     /// Streams already in the right codec are copied untouched unless the clip is trimmed.
     static func finalize(input: URL, quality: Quality, trimStart: Double?, trimEnd: Double?,
                          output: URL, handle: RunningProcess,
@@ -308,6 +307,11 @@ enum Pipeline {
             audio = quality == .mp3 ? ["-c:a", "libmp3lame", "-q:a", "0"] : ["-c:a", "pcm_s24le", "-ar", "48000"]
             container = []
             label = quality == .mp3 ? "Making MP3" : "Making WAV"
+        case .prores:
+            video = info.videoCodec == nil ? ["-vn"] : videoArgs(.prores, height: info.height, fps: info.fps)
+            audio = info.audioCodec == nil ? ["-an"] : audioArgs(.prores)
+            container = containerArgs(.prores)
+            label = "Converting to ProRes"
         case .best, .hd1080:
             let copyVideo = info.videoCodec == "h264" && info.pixelFormat == "yuv420p" && !trimmed
             if info.videoCodec == nil {
@@ -319,8 +323,8 @@ enum Pipeline {
             }
             if info.audioCodec == nil { audio = ["-an"] }
             else if info.audioCodec == "aac" && !trimmed { audio = ["-c:a", "copy"] }
-            else { audio = ["-c:a", "aac", "-b:a", "320k", "-ar", "48000"] }
-            container = ["-tag:v", "avc1", "-movflags", "+faststart"]
+            else { audio = audioArgs(quality) }
+            container = containerArgs(quality)
             label = copyVideo ? "Finishing up" : "Converting to H.264 for Premiere"
         }
 
@@ -340,9 +344,9 @@ enum Pipeline {
         onProgress(0, "\(label)…")
         var result = try await attempt(video)
         if handle.cancelled { throw CancellationError() }
-        if result.status != 0, video.contains("h264_videotoolbox") {
+        if result.status != 0, let software = softwareFallback(video) {
             // No hardware encoder available (older Mac or unusual source): use the software encoder.
-            video = ["-c:v", "libx264", "-preset", "fast", "-crf", "18", "-profile:v", "high", "-pix_fmt", "yuv420p"]
+            video = software
             onProgress(0, "\(label)…")
             result = try await attempt(video)
             if handle.cancelled { throw CancellationError() }
@@ -352,10 +356,78 @@ enum Pipeline {
         }
         if !quality.isAudio, info.videoCodec != nil {
             let check = await probe(output)
-            guard check.videoCodec == "h264" else {
-                throw PipelineError(message: "Conversion produced \(check.videoCodec ?? "nothing") instead of H.264.")
+            let expected = quality == .prores ? "prores" : "h264"
+            guard check.videoCodec == expected else {
+                throw PipelineError(message: "Conversion produced \(check.videoCodec ?? "nothing") instead of \(expected).")
             }
         }
+    }
+
+    /// Encoder settings per output type. Apple's hardware encoders first; `softwareFallback` covers Macs without them.
+    private static func videoArgs(_ quality: Quality, height: Int?, fps: Double?) -> [String] {
+        if quality == .prores { return ["-c:v", "prores_videotoolbox", "-profile:v", "hq"] }
+        return hardwareVideoArgs(height: height, fps: fps)
+    }
+
+    private static func softwareFallback(_ args: [String]) -> [String]? {
+        if args.contains("h264_videotoolbox") {
+            return ["-c:v", "libx264", "-preset", "fast", "-crf", "18", "-profile:v", "high", "-pix_fmt", "yuv420p"]
+        }
+        if args.contains("prores_videotoolbox") {
+            return ["-c:v", "prores_ks", "-profile:v", "3", "-vendor", "apl0", "-pix_fmt", "yuv422p10le"]
+        }
+        return nil
+    }
+
+    private static func audioArgs(_ quality: Quality) -> [String] {
+        switch quality {
+        case .prores: return ["-c:a", "pcm_s16le", "-ar", "48000"]
+        case .mp3: return ["-c:a", "libmp3lame", "-q:a", "0"]
+        case .wav: return ["-c:a", "pcm_s24le", "-ar", "48000"]
+        case .best, .hd1080: return ["-c:a", "aac", "-b:a", "320k", "-ar", "48000"]
+        }
+    }
+
+    private static func containerArgs(_ quality: Quality) -> [String] {
+        switch quality {
+        case .best, .hd1080: return ["-tag:v", "avc1", "-movflags", "+faststart"]
+        case .prores, .mp3, .wav: return []
+        }
+    }
+
+    // MARK: Captions
+
+    /// Saves the video's captions (or YouTube's automatic ones) as .srt next to the video, cut to match a trim.
+    /// Returns the saved files; captions are a bonus, so failures just mean none were saved.
+    static func saveCaptions(url: String, useLogin: Bool, browser: String, workDir: URL,
+                             trimStart: Double?, trimEnd: Double?, baseName: URL) async -> [URL] {
+        let dir = workDir.appendingPathComponent("captions")
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let args = commonArgs(useLogin: useLogin, browser: browser)
+            + ["--skip-download", "--write-subs", "--write-auto-subs", "--sub-langs", "en.*,en",
+               "--convert-subs", "srt", "-P", dir.path, "-o", "captions.%(ext)s", "--", url]
+        guard let result = try? await Runner.run(Tools.ytdlp, args), result.status == 0 else { return [] }
+        let files = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
+        var saved: [URL] = []
+        for file in files where file.pathExtension == "srt" {
+            // captions.en.srt -> "<video name>.en.srt"
+            let language = file.deletingPathExtension().pathExtension
+            let target = URL(fileURLWithPath: baseName.path + (language.isEmpty ? "" : ".\(language)") + ".srt")
+            try? FileManager.default.removeItem(at: target)
+            if trimStart != nil || trimEnd != nil {
+                let start = max(trimStart ?? 0, 0)
+                var cut = ["-hide_banner", "-nostdin", "-y", "-loglevel", "error"]
+                if start > 0 { cut += ["-ss", String(format: "%.3f", start)] }
+                cut += ["-i", file.path]
+                if let end = trimEnd { cut += ["-t", String(format: "%.3f", max(end - start, 0.1))] }
+                cut += [target.path]
+                guard let r = try? await Runner.run(Tools.ffmpeg, cut), r.status == 0 else { continue }
+            } else {
+                guard (try? FileManager.default.moveItem(at: file, to: target)) != nil else { continue }
+            }
+            saved.append(target)
+        }
+        return saved
     }
 
     /// Apple's hardware H.264 encoder with a bitrate scaled to resolution and frame rate.

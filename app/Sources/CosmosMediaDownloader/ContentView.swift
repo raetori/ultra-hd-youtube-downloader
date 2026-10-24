@@ -32,6 +32,9 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showHistory) { HistoryView() }
         .onAppear { updater.check() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            queue.checkClipboard()
+        }
     }
 
     // MARK: Header
@@ -46,7 +49,7 @@ struct ContentView: View {
                     Text("Cosmos Media Downloader")
                         .font(.system(size: 18, weight: .bold))
                         .foregroundStyle(.white)
-                    Text("HD video that drops straight into Premiere Pro")
+                    Text("From the source to the edit suite · HD files ready for Premiere Pro")
                         .font(.system(size: 12))
                         .foregroundStyle(.white.opacity(0.6))
                 }
@@ -93,7 +96,7 @@ struct ContentView: View {
         .padding(.horizontal, 20)
         .padding(.top, 34)
         .padding(.bottom, 16)
-        .background(Theme.space)
+        .background(ZStack { Theme.space; Starfield() })
     }
 
     private var optionsBar: some View {
@@ -104,7 +107,7 @@ struct ContentView: View {
                     ForEach(Quality.allCases) { Text($0.label).tag($0) }
                 }
                 .labelsHidden()
-                .frame(width: 170)
+                .frame(width: 200)
                 .help("Used for links you add from now on. Each video can also be changed on its own.")
             }
 
@@ -146,6 +149,22 @@ struct ContentView: View {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(Tools.installCommand, forType: .string)
             }
+        }
+        if !queue.clipboardLinks.isEmpty {
+            let count = queue.clipboardLinks.count
+            HStack(spacing: 10) {
+                Image(systemName: "doc.on.clipboard").foregroundStyle(Theme.accent)
+                Text(count == 1 ? "You copied a link: \(queue.clipboardLinks[0])" : "You copied \(count) links.")
+                    .font(.system(size: 12))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Spacer()
+                Button("Not now") { queue.clipboardLinks = [] }.buttonStyle(.borderless)
+                Button(count == 1 ? "Add it" : "Add all") { queue.acceptClipboardLinks() }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 9)
+            .background(Theme.accent.opacity(0.1))
         }
         if let version = updater.availableVersion {
             Banner(symbol: "sparkles", tint: Theme.accent,
@@ -242,6 +261,7 @@ struct ContentView: View {
     private func pasteFromClipboard() {
         let text = NSPasteboard.general.string(forType: .string) ?? ""
         let count = queue.add(text: text)
+        queue.markClipboardSeen()
         addMessage = count == 0 ? "The clipboard doesn't contain any links. Copy a link first." : "Added \(count) link\(count == 1 ? "" : "s")."
     }
 

@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 
 enum Quality: String, CaseIterable, Identifiable, Codable {
-    case best, hd1080, mp3, wav
+    case best, hd1080, prores, mp3, wav
 
     var id: String { rawValue }
 
@@ -10,6 +10,7 @@ enum Quality: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .best: return "Best HD (up to 4K)"
         case .hd1080: return "HD 1080p (faster)"
+        case .prores: return "ProRes 422 HQ (for heavy editing)"
         case .mp3: return "Audio only (MP3)"
         case .wav: return "Audio only (WAV)"
         }
@@ -19,17 +20,28 @@ enum Quality: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .best: return "Best HD"
         case .hd1080: return "1080p"
+        case .prores: return "ProRes"
         case .mp3: return "MP3"
         case .wav: return "WAV"
         }
     }
 
-    var symbol: String { isAudio ? "waveform" : "film" }
+    var symbol: String { isAudio ? "waveform" : (self == .prores ? "film.stack" : "film") }
+
+    /// What the finished file contains, shown as a badge on each row.
+    var outputBadge: String? {
+        switch self {
+        case .best, .hd1080: return "H.264 MP4"
+        case .prores: return "ProRes MOV"
+        case .mp3, .wav: return nil
+        }
+    }
     var isAudio: Bool { self == .mp3 || self == .wav }
 
     var fileExtension: String {
         switch self {
         case .best, .hd1080: return "mp4"
+        case .prores: return "mov"
         case .mp3: return "mp3"
         case .wav: return "wav"
         }
@@ -39,7 +51,7 @@ enum Quality: String, CaseIterable, Identifiable, Codable {
     /// the 1080p option picks the site's own H.264 + AAC streams when they exist so no conversion is needed.
     var formatSelector: String {
         switch self {
-        case .best:
+        case .best, .prores:
             return "bv*[dynamic_range=SDR]+ba/bv*+ba/b"
         case .hd1080:
             return "bv*[height<=1080][vcodec^=avc1]+ba[acodec^=mp4a]/bv*[height<=1080][dynamic_range=SDR]+ba/bv*[height<=1080]+ba/b[height<=1080]/b"

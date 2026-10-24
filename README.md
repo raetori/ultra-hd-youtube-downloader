@@ -25,9 +25,11 @@ No Homebrew, no admin password, no security warnings. Needs macOS 13 (Ventura) o
 2. For each video you can:
    - **Rename** the file (click the name)
    - **Trim** to a start and end time
-   - Pick the **quality**: Best HD (up to 4K), HD 1080p (faster), Audio MP3 or Audio WAV
+   - Pick the **quality**: Best HD (up to 4K), HD 1080p (faster), ProRes 422 HQ (.mov, for heavy editing and grading), Audio MP3 or Audio WAV
 3. Click **Download all**. Two videos download at a time by default (choose 1–3 with **At once**). Cancel any video with its ✕ button.
 4. Pick where files go with **Save to**. Click the magnifier on a finished video to see it in Finder.
+5. Copied a link in your browser? Switch to the app and it offers to add it.
+6. In **Settings** (Cmd + ,) you can also save captions (.srt) next to each video and get a notification when downloads finish.
 
 Every video comes out as H.264 + AAC MP4. If the site's file is already H.264 it is kept as is (instant); otherwise it is converted using the Mac's built-in video encoder.
 
