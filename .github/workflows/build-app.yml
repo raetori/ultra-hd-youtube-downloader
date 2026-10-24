@@ -2,7 +2,7 @@ name: Build app
 
 on:
   push:
-    branches: [main]
+    branches: [main, "preview/**"]
     paths: ["app/**", "assets/**", ".github/workflows/build-app.yml"]
   workflow_dispatch:
 
@@ -30,6 +30,11 @@ jobs:
           pgrep -x CosmosMediaDownloader
           screencapture -x dist/screenshot.png
           pkill -x CosmosMediaDownloader || true
+          sleep 2
+          open "dist/Cosmos Media Downloader.app" --args --demo
+          sleep 8
+          screencapture -x dist/screenshot-demo.png
+          pkill -9 -x CosmosMediaDownloader || true
 
       - name: End-to-end test (real downloads with the Mac's own encoder)
         continue-on-error: true
@@ -63,9 +68,12 @@ jobs:
           gh release view ci-preview >/dev/null 2>&1 || \
             gh release create ci-preview --prerelease --title "CI preview" --notes "Screenshots from automated test launches. Not for installing."
           gh release upload ci-preview dist/screenshot.png --clobber
+          [ -f dist/screenshot-demo.png ] && gh release upload ci-preview dist/screenshot-demo.png --clobber
           [ -f dist/selftest.txt ] && gh release upload ci-preview dist/selftest.txt --clobber
 
       - name: Publish release
+        # Preview branches only build and photograph the app; releases come from main.
+        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

@@ -43,7 +43,7 @@ struct SettingsView: View {
                     HStack {
                         if !FileManager.default.isExecutableFile(atPath: Tools.deno.path) {
                             Text("Deno missing: YouTube will be slow. Run the install line again.")
-                                .foregroundStyle(.orange)
+                                .foregroundStyle(Theme.ember)
                                 .font(.system(size: 11))
                         }
                         if let toolsMessage { Text(toolsMessage).foregroundStyle(.secondary) }
@@ -66,6 +66,8 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .background(Theme.ink)
         .frame(width: 520)
         .fixedSize(horizontal: false, vertical: true)
     }
@@ -96,7 +98,10 @@ struct HistoryView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("History").font(.title3.weight(.semibold))
+                VStack(alignment: .leading, spacing: 4) {
+                    Eyebrow("Archive")
+                    Text("History").font(.system(size: 20, weight: .medium)).tracking(-0.3)
+                }
                 Spacer()
                 TextField("Search", text: $search).textFieldStyle(.roundedBorder).frame(width: 200)
             }
@@ -113,7 +118,7 @@ struct HistoryView: View {
             } else {
                 List(filtered) { entry in
                     HStack(spacing: 10) {
-                        Image(systemName: entry.quality.symbol).foregroundStyle(Theme.accent).frame(width: 18)
+                        Image(systemName: entry.quality.symbol).foregroundStyle(Theme.gold).frame(width: 18)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(entry.title).lineLimit(1)
                             HStack(spacing: 6) {
@@ -144,5 +149,6 @@ struct HistoryView: View {
             .padding(12)
         }
         .frame(width: 640, height: 460)
+        .background(Theme.ink)
     }
 }
