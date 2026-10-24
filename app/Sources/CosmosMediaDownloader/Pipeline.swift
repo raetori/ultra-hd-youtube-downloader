@@ -105,6 +105,8 @@ enum Pipeline {
         args += ["-f", quality.formatSelector,
                  "-P", workDir.path, "-o", "media.%(ext)s",
                  "--newline", "--no-mtime", "--force-overwrites",
+                 // Several connections at once for sites that serve video in pieces (Instagram, TikTok, HLS/DASH).
+                 "--concurrent-fragments", "4",
                  "--progress-template", "download:COSMOS %(progress.downloaded_bytes)s %(progress.total_bytes)s %(progress.total_bytes_estimate)s %(progress.speed)s %(progress.eta)s",
                  "--print-to-file", "after_move:filepath", pathFile.path]
         if !quality.isAudio { args += ["--merge-output-format", "mkv"] }

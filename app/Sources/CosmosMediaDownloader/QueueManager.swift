@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import Foundation
 import SwiftUI
 
@@ -47,12 +48,21 @@ final class AppSettings: ObservableObject {
 final class QueueManager: ObservableObject {
     static weak var shared: QueueManager?
 
-    @Published var items: [DownloadItem] = []
+    @Published var items: [DownloadItem] = [] { didSet { observeItems() } }
     @Published var history: [HistoryEntry] = []
     @Published var toolsMissing = !Tools.installed
 
     let settings: AppSettings
     private let infoLimiter = AsyncLimiter(4)
+    private var itemObservers: [AnyCancellable] = []
+
+    /// Rows observe their own item, but the footer (Download all, counts) reads every item's state,
+    /// so a state change on any item has to refresh the queue as well.
+    private func observeItems() {
+        itemObservers = items.map { item in
+            item.$state.removeDuplicates().dropFirst().sink { [weak self] _ in self?.objectWillChange.send() }
+        }
+    }
 
     init(settings: AppSettings) {
         self.settings = settings
