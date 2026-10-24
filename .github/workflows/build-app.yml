@@ -22,6 +22,22 @@ jobs:
       - name: Make the .app
         run: bash app/bundle.sh
 
+      - name: Smoke test (launch the app and take a screenshot)
+        continue-on-error: true
+        run: |
+          open "dist/Cosmos Media Downloader.app"
+          sleep 8
+          pgrep -x CosmosMediaDownloader
+          screencapture -x dist/screenshot.png
+          pkill -x CosmosMediaDownloader || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshot
+          path: dist/screenshot.png
+          if-no-files-found: ignore
+
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
