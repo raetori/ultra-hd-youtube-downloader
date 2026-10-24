@@ -36,12 +36,21 @@ jobs:
         run: |
           bash install.sh --update || true
           pkill -x CosmosMediaDownloader || true
-          # Open movies from the Blender Foundation (Creative Commons): a direct H.264 file and a YouTube upload,
-          # trimmed so the YouTube one has to be re-encoded.
+          # YouTube blocks cloud machines like this one, so test media is generated here and served locally:
+          # a 4K VP9/Opus WebM (must be converted), an H.264/AAC MP4 (must be copied untouched) and a trimmed clip.
+          F="$HOME/Library/Application Support/TeamYTDownloader/bin/ffmpeg"
+          mkdir -p /tmp/media && cd /tmp/media
+          "$F" -loglevel error -y -f lavfi -i testsrc2=size=3840x2160:rate=30 -f lavfi -i sine=frequency=440 -t 12 -c:v libvpx-vp9 -deadline realtime -cpu-used 8 -b:v 8M -c:a libopus vp9-4k.webm
+          "$F" -loglevel error -y -f lavfi -i testsrc2=size=1920x1080:rate=30 -f lavfi -i sine=frequency=440 -t 12 -c:v libx264 -pix_fmt yuv420p -c:a aac h264-1080.mp4
+          python3 -m http.server 8765 >/dev/null 2>&1 &
+          sleep 2
+          cd "$GITHUB_WORKSPACE"
           "dist/Cosmos Media Downloader.app/Contents/MacOS/CosmosMediaDownloader" --selftest \
-            "best::https://download.blender.org/peach/bigbuckbunny_movies/BigBuckBunny_320x180.mp4" \
-            "hd1080:10-30:https://www.youtube.com/watch?v=aqz-KE-bpKQ" \
-            "mp3:0-15:https://www.youtube.com/watch?v=aqz-KE-bpKQ" 2>&1 | tee dist/selftest.txt
+            "best::http://127.0.0.1:8765/vp9-4k.webm" \
+            "best::http://127.0.0.1:8765/h264-1080.mp4" \
+            "hd1080:2-7:http://127.0.0.1:8765/h264-1080.mp4" \
+            "wav:0-5:http://127.0.0.1:8765/vp9-4k.webm" \
+            "hd1080:10-30:https://www.youtube.com/watch?v=aqz-KE-bpKQ" 2>&1 | tee dist/selftest.txt
 
       - name: Keep the screenshot on a "ci-preview" pre-release
         if: always()
