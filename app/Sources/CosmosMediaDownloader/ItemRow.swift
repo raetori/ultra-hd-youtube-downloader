@@ -240,14 +240,16 @@ struct OpenSettingsButton: View {
     var ghost = false
 
     var body: some View {
-        Button(label) {
-            if #available(macOS 14, *) {
-                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-            } else {
+        // macOS 14 and later ignore the old menu action, so use SwiftUI's own link there.
+        if #available(macOS 14, *) {
+            SettingsLink { Text(label) }
+                .modifier(SettingsButtonLook(ghost: ghost))
+        } else {
+            Button(label) {
                 NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
             }
+            .modifier(SettingsButtonLook(ghost: ghost))
         }
-        .modifier(SettingsButtonLook(ghost: ghost))
     }
 }
 
