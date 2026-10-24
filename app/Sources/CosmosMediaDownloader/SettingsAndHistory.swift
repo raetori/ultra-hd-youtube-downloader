@@ -38,6 +38,11 @@ struct SettingsView: View {
             Section("Maintenance") {
                 LabeledContent("Download engine") {
                     HStack {
+                        if !FileManager.default.isExecutableFile(atPath: Tools.deno.path) {
+                            Text("Deno missing: YouTube will be slow. Run the install line again.")
+                                .foregroundStyle(.orange)
+                                .font(.system(size: 11))
+                        }
                         if let toolsMessage { Text(toolsMessage).foregroundStyle(.secondary) }
                         Button(updatingTools ? "Updating…" : "Update now") { updateTools() }.disabled(updatingTools)
                     }
