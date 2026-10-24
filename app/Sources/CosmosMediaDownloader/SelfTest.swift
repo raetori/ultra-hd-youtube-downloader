@@ -7,7 +7,7 @@ enum SelfTest {
         Task {
             var failures = 0
             for spec in specs {
-                let parts = spec.split(separator: ":", maxSplits: 2).map(String.init)
+                let parts = spec.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false).map(String.init)
                 guard parts.count == 3, let quality = Quality(rawValue: parts[0]) else { print("bad spec \(spec)"); failures += 1; continue }
                 let range = parts[1].split(separator: "-").map { Double($0) }
                 let url = parts[2]
