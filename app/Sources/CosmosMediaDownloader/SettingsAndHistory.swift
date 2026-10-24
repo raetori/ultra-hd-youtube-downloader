@@ -21,6 +21,9 @@ struct SettingsView: View {
                 Picker("Downloads at once", selection: $settings.maxConcurrent) {
                     ForEach(1...3, id: \.self) { Text("\($0)").tag($0) }
                 }
+                Toggle("Also save captions (.srt) when available", isOn: $settings.saveCaptions)
+                Toggle("Notify me when downloads finish", isOn: $settings.notifyWhenDone)
+                Toggle("Offer links I copy when I switch to the app", isOn: $settings.watchClipboard)
             }
 
             Section {

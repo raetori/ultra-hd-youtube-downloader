@@ -128,7 +128,7 @@ struct ItemRow: View {
             if let resolution = item.resolution, !item.quality.isAudio {
                 Chip(text: item.quality == .hd1080 && ["4K", "8K", "1440p"].contains(resolution) ? "1080p" : resolution, tint: Theme.accent)
             }
-            if !item.quality.isAudio { Chip(text: "H.264 MP4", symbol: "checkmark.seal.fill", tint: .green) }
+            if let badge = item.quality.outputBadge { Chip(text: badge, symbol: "checkmark.seal.fill", tint: .green) }
             if item.useLogin { Chip(text: "Using \(settings.loginBrowserName) login", symbol: "person.crop.circle", tint: .orange) }
         }
     }

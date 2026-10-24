@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import Foundation
+import UserNotifications
 import SwiftUI
 
 @MainActor
@@ -12,6 +13,10 @@ final class AppSettings: ObservableObject {
     @Published var maxConcurrent: Int { didSet { defaults.set(maxConcurrent, forKey: "maxConcurrent") } }
     /// Browser whose login yt-dlp may borrow when a site insists on one ("none" = never).
     @Published var loginBrowser: String { didSet { defaults.set(loginBrowser, forKey: "loginBrowser") } }
+    /// Also save captions (.srt) next to each video when the site has them.
+    @Published var saveCaptions: Bool { didSet { defaults.set(saveCaptions, forKey: "saveCaptions") } }
+    @Published var notifyWhenDone: Bool { didSet { defaults.set(notifyWhenDone, forKey: "notifyWhenDone") } }
+    @Published var watchClipboard: Bool { didSet { defaults.set(watchClipboard, forKey: "watchClipboard") } }
 
     static let browsers: [(id: String, name: String)] = [
         ("none", "Don't use a login"), ("safari", "Safari"), ("chrome", "Google Chrome"), ("brave", "Brave"),
@@ -26,6 +31,9 @@ final class AppSettings: ObservableObject {
         let stored = defaults.integer(forKey: "maxConcurrent")
         maxConcurrent = (1...3).contains(stored) ? stored : 2
         loginBrowser = defaults.string(forKey: "loginBrowser") ?? "none"
+        saveCaptions = defaults.bool(forKey: "saveCaptions")
+        notifyWhenDone = defaults.object(forKey: "notifyWhenDone") as? Bool ?? true
+        watchClipboard = defaults.object(forKey: "watchClipboard") as? Bool ?? true
     }
 
     var loginBrowserName: String {
@@ -51,6 +59,9 @@ final class QueueManager: ObservableObject {
     @Published var items: [DownloadItem] = [] { didSet { observeItems() } }
     @Published var history: [HistoryEntry] = []
     @Published var toolsMissing = !Tools.installed
+    /// Links found on the clipboard when the app comes to the front, offered with one click.
+    @Published var clipboardLinks: [String] = []
+    private var lastPasteboardChange = NSPasteboard.general.changeCount
 
     let settings: AppSettings
     private let infoLimiter = AsyncLimiter(4)
@@ -212,6 +223,7 @@ final class QueueManager: ObservableObject {
         let useLogin = item.useLogin, browser = settings.loginBrowser
         let trimStart = item.trimStart, trimEnd = item.trimEnd, duration = item.duration
         let folder = settings.saveFolder
+        let captions = settings.saveCaptions
         let work = Tools.workRoot.appendingPathComponent(item.id.uuidString)
 
         let report: @Sendable (Double, String) -> Void = { [weak item] value, text in
@@ -250,10 +262,19 @@ final class QueueManager: ObservableObject {
                 let destination = FileNames.unique(in: folder, name: name, ext: quality.fileExtension)
                 try FileManager.default.moveItem(at: temp, to: destination)
 
+                var savedNote = "Saved to \(folder.lastPathComponent)"
+                if captions {
+                    item.detail = "Saving captions…"
+                    let srt = await Pipeline.saveCaptions(url: url, useLogin: useLogin, browser: browser, workDir: work,
+                                                          trimStart: trimStart, trimEnd: trimEnd,
+                                                          baseName: destination.deletingPathExtension())
+                    savedNote += srt.isEmpty ? " · no captions available" : " · with captions"
+                }
+
                 item.outputURL = destination
                 item.state = .done
                 item.progress = 1
-                item.detail = "Saved to \(folder.lastPathComponent)"
+                item.detail = savedNote
                 addHistory(item, file: destination)
             } catch {
                 if handle.cancelled || error is CancellationError {
@@ -272,11 +293,49 @@ final class QueueManager: ObservableObject {
             updateDockBadge()
             if activeCount == 0 && waitingCount == 0 && finishedCount > 0 {
                 _ = NSApp.requestUserAttention(.informationalRequest)
+                notifyFinished()
             }
         }
     }
 
     private var activity: NSObjectProtocol?
+
+    private func notifyFinished() {
+        guard settings.notifyWhenDone, !NSApp.isActive else { return }
+        let done = finishedCount
+        let failed = items.filter { $0.state == .failed }.count
+        let center = UNUserNotificationCenter.current()
+        center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+            guard granted else { return }
+            let content = UNMutableNotificationContent()
+            content.title = "Downloads finished"
+            content.body = "\(done) ready" + (failed > 0 ? ", \(failed) failed" : "") + ". Click to open Cosmos Media Downloader."
+            content.sound = .default
+            center.add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
+        }
+    }
+
+    /// Called when the app comes to the front: offers links copied elsewhere since the last look.
+    func checkClipboard() {
+        guard settings.watchClipboard else { return }
+        let board = NSPasteboard.general
+        guard board.changeCount != lastPasteboardChange else { return }
+        lastPasteboardChange = board.changeCount
+        let known = Set(items.map(\.url))
+        let links = LinkParser.links(in: board.string(forType: .string) ?? "").filter { !known.contains($0) }
+        clipboardLinks = Array(links.prefix(50))
+    }
+
+    func acceptClipboardLinks() {
+        add(urls: clipboardLinks.map { (url: $0, title: String?.none) })
+        clipboardLinks = []
+    }
+
+    /// Links added with the Paste button shouldn't be offered again by the clipboard banner.
+    func markClipboardSeen() {
+        lastPasteboardChange = NSPasteboard.general.changeCount
+        clipboardLinks = []
+    }
 
     private func updateDockBadge() {
         let pending = activeCount + waitingCount
