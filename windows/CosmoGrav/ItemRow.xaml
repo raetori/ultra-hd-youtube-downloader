@@ -1,0 +1,113 @@
+<UserControl x:Class="CosmoGrav.ItemRow"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:CosmoGrav"
+             Margin="0,0,0,10">
+    <Border x:Name="Card" CornerRadius="14" BorderThickness="1" BorderBrush="{StaticResource Hairline}" Background="{StaticResource Card}" Padding="14">
+        <Border.Effect>
+            <DropShadowEffect x:Name="ActiveGlow" Color="{StaticResource GoldColor}" BlurRadius="28" ShadowDepth="0" Opacity="0"/>
+        </Border.Effect>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="136"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="40"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Thumbnail with duration -->
+            <Grid Width="136" Height="77" VerticalAlignment="Top">
+                <Border x:Name="ThumbFrame" CornerRadius="9" Background="{StaticResource Space}" BorderBrush="{StaticResource Hairline}" BorderThickness="1" ClipToBounds="True">
+                    <Grid>
+                        <TextBlock x:Name="ThumbGlyph" FontFamily="{StaticResource IconFont}" FontSize="16" Foreground="#80EDC287" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <local:OrbRing x:Name="ThumbOrb" Width="26" Height="26" Visibility="Collapsed"/>
+                    </Grid>
+                </Border>
+                <Border x:Name="ThumbImageFrame" CornerRadius="9" Visibility="Collapsed">
+                    <Border.Background>
+                        <ImageBrush x:Name="ThumbImage" Stretch="UniformToFill"/>
+                    </Border.Background>
+                </Border>
+                <Border x:Name="DurationPill" CornerRadius="999" Background="#B3000000" Padding="5,1" Margin="5" HorizontalAlignment="Right" VerticalAlignment="Bottom" Visibility="Collapsed">
+                    <TextBlock x:Name="DurationText" FontFamily="{StaticResource MonoFont}" FontSize="10" Foreground="White"/>
+                </Border>
+            </Grid>
+
+            <StackPanel Grid.Column="1" Margin="14,0,8,0">
+                <!-- Site + title -->
+                <DockPanel LastChildFill="True" Margin="0,0,0,7">
+                    <StackPanel x:Name="SitePanel" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,7,0" DockPanel.Dock="Left">
+                        <Ellipse x:Name="SiteDot" Width="5" Height="5" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                        <local:TrackedText x:Name="SiteText" Mono="True" FontSize="9.5" Tracking="1.4" Foreground="#99FFFFFF" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <TextBlock x:Name="TitleText" FontFamily="{StaticResource UiFont}" FontSize="13.5" FontWeight="Medium" Foreground="White" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                </DockPanel>
+
+                <!-- File name -->
+                <Border x:Name="NameBox" CornerRadius="7" Background="#0DFFFFFF" Padding="9,4" Margin="0,0,0,7" ToolTip="Rename the file before downloading">
+                    <DockPanel>
+                        <TextBlock Text="&#xE70F;" FontFamily="{StaticResource IconFont}" FontSize="10" Foreground="{StaticResource TextDim}" VerticalAlignment="Center" Margin="0,0,6,0" DockPanel.Dock="Left"/>
+                        <TextBlock x:Name="ExtText" FontFamily="{StaticResource UiFont}" FontSize="12" Foreground="{StaticResource TextDim}" VerticalAlignment="Center" DockPanel.Dock="Right"/>
+                        <TextBox x:Name="NameField" Style="{StaticResource PlainTextBox}" FontSize="12"/>
+                    </DockPanel>
+                </Border>
+
+                <!-- Quality, trim, chips -->
+                <WrapPanel x:Name="OptionRow" Orientation="Horizontal" Margin="-6,0,0,0">
+                    <Button x:Name="QualityButton" Style="{StaticResource RowButton}" Click="QualityButton_Click" ToolTip="Quality for this video">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Name="QualityGlyph" FontFamily="{StaticResource IconFont}" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{StaticResource Gold}"/>
+                            <TextBlock x:Name="QualityText" VerticalAlignment="Center" Foreground="#E6FFFFFF"/>
+                            <TextBlock Text="&#xE70D;" FontFamily="{StaticResource IconFont}" FontSize="8" VerticalAlignment="Center" Margin="5,1,0,0"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="TrimButton" Style="{StaticResource RowButton}" Click="TrimButton_Click" ToolTip="Keep only part of the video" Margin="2,0,6,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE8C6;" FontFamily="{StaticResource IconFont}" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock x:Name="TrimText" Text="Trim" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <StackPanel x:Name="Chips" Orientation="Horizontal" VerticalAlignment="Center"/>
+                </WrapPanel>
+
+                <!-- Status -->
+                <StackPanel x:Name="ProgressPanel" Margin="0,6,0,0" Visibility="Collapsed">
+                    <local:OrbBar x:Name="Bar"/>
+                    <local:TrackedText x:Name="ProgressText" Mono="True" FontSize="9.5" Tracking="0.8" Foreground="{StaticResource GoldSoft}" Margin="0,3,0,0"/>
+                </StackPanel>
+                <StackPanel x:Name="FailedPanel" Margin="0,6,0,0" Visibility="Collapsed">
+                    <TextBox x:Name="ErrorText" Style="{StaticResource PlainTextBox}" IsReadOnly="True" TextWrapping="Wrap" MaxHeight="34" FontSize="11.5" Foreground="{StaticResource Danger}"/>
+                    <StackPanel x:Name="LoginHint" Orientation="Horizontal" Margin="0,3,0,0" Visibility="Collapsed">
+                        <TextBlock Text="This site wants you to be logged in." FontFamily="{StaticResource UiFont}" FontSize="11.5" Foreground="{StaticResource TextDim}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <Button x:Name="LoginButton" Style="{StaticResource LinkButton}" Click="LoginButton_Click"/>
+                    </StackPanel>
+                </StackPanel>
+                <StackPanel x:Name="DonePanel" Orientation="Horizontal" Margin="0,6,0,0" Visibility="Collapsed">
+                    <TextBlock Text="&#xE930;" FontFamily="{StaticResource IconFont}" FontSize="11" Foreground="{StaticResource Gold}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBlock x:Name="DoneText" FontFamily="{StaticResource UiFont}" FontSize="11.5" Foreground="{StaticResource Gold}" VerticalAlignment="Center"/>
+                </StackPanel>
+                <TextBlock x:Name="DetailText" FontFamily="{StaticResource UiFont}" FontSize="11.5" Foreground="{StaticResource TextDim}" Margin="0,6,0,0" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+
+            <!-- Actions -->
+            <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+                <Button x:Name="MainAction" Style="{StaticResource IconButton}" Click="MainAction_Click"/>
+                <Button x:Name="CancelRing" Width="30" Height="30" Click="Cancel_Click" ToolTip="Cancel" Cursor="Hand" Visibility="Collapsed">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Grid Background="Transparent">
+                                <local:OrbRing x:Name="ActionOrb" Width="26" Height="26" Progress="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}"/>
+                                <TextBlock x:Name="X" Text="&#xE711;" FontFamily="{StaticResource IconFont}" FontSize="8" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0"/>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="X" Property="Opacity" Value="0.9"/></Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+                <local:OrbRing x:Name="FetchOrb" Width="22" Height="22" Margin="0,3,0,0" Visibility="Collapsed"/>
+                <Button x:Name="RemoveButton" Style="{StaticResource IconButton}" BorderBrush="Transparent" Foreground="{StaticResource TextDim}"
+                        Content="&#xE74D;" ToolTip="Remove from list" Margin="0,6,0,0" Opacity="0.35" Click="Remove_Click"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

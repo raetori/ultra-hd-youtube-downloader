@@ -1,0 +1,144 @@
+name: Build Windows app
+
+on:
+  push:
+    branches: [main, "preview/**", "claude/**"]
+    paths: ["windows/**", "install.ps1", ".github/workflows/build-windows.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compile
+        run: dotnet build windows/CosmoGrav/CosmoGrav.csproj -c Release -nologo
+
+      - name: Zip the app
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          $out = "windows/CosmoGrav/bin/Release/net48"
+          Compress-Archive -Force -Path "$out/CosmoGrav.exe", "$out/CosmoGrav.exe.config" -DestinationPath dist/CosmoGrav-Windows.zip
+          Get-Item dist/CosmoGrav-Windows.zip | Select-Object Name, Length
+
+      # Windows PowerShell 5.1 is what teammates have, and "irm ... | iex" runs the script text the same way.
+      - name: Install with the one-line installer
+        shell: powershell
+        run: |
+          $env:COSMOGRAV_ZIP = "$PWD\dist\CosmoGrav-Windows.zip"
+          $env:COSMOGRAV_NO_LAUNCH = '1'
+          Get-Content -Raw install.ps1 | Invoke-Expression
+          $base = "$env:LOCALAPPDATA\CosmoGrav"
+          foreach ($f in 'app\CosmoGrav.exe', 'bin\yt-dlp.exe', 'bin\ffmpeg.exe', 'bin\ffprobe.exe', 'bin\deno.exe', 'uninstall.ps1') {
+            if (-not (Test-Path "$base\$f")) { throw "missing $f after install" }
+          }
+          if (-not (Test-Path (Join-Path ([Environment]::GetFolderPath('Programs')) 'CosmoGrav.lnk'))) { throw 'no Start menu shortcut' }
+          if (-not (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\CosmoGrav' -ErrorAction SilentlyContinue)) { throw 'no Apps entry' }
+          & "$base\bin\yt-dlp.exe" --version
+          & "$base\bin\ffmpeg.exe" -hide_banner -encoders 2>$null | Select-String 'libx264|h264_nvenc|h264_qsv|h264_amf|prores_ks|libmp3lame'
+
+      - name: Run the installer again in update mode (what "Update now" does)
+        shell: powershell
+        run: |
+          $env:COSMOGRAV_ZIP = "$PWD\dist\CosmoGrav-Windows.zip"
+          $env:COSMOGRAV_NO_LAUNCH = '1'
+          $env:COSMOGRAV_UPDATE = '1'
+          $log = & { Get-Content -Raw install.ps1 | Invoke-Expression } *>&1 | Out-String
+          $log
+          if ($log -notmatch 'already set up') { throw 'update mode re-downloaded the tools' }
+          if (-not (Test-Path "$env:LOCALAPPDATA\CosmoGrav\app\CosmoGrav.exe")) { throw 'app missing after update' }
+
+      - name: End-to-end test (real downloads and conversions)
+        shell: pwsh
+        run: |
+          # YouTube blocks cloud machines like this one, so test media is generated here and served locally:
+          # a 4K VP9/Opus WebM (must be converted), an H.264/AAC MP4 (must be copied untouched) and trimmed clips.
+          $base = "$env:LOCALAPPDATA\CosmoGrav"
+          $ffmpeg = "$base\bin\ffmpeg.exe"
+          New-Item -ItemType Directory -Force media | Out-Null
+          & $ffmpeg -loglevel error -y -f lavfi -i testsrc2=size=3840x2160:rate=30 -f lavfi -i sine=frequency=440 -t 12 -c:v libvpx-vp9 -deadline realtime -cpu-used 8 -b:v 8M -c:a libopus media/vp9-4k.webm
+          & $ffmpeg -loglevel error -y -f lavfi -i testsrc2=size=1920x1080:rate=30 -f lavfi -i sine=frequency=440 -t 12 -c:v libx264 -pix_fmt yuv420p -c:a aac -movflags +faststart media/h264-1080.mp4
+          $server = Start-Process python -ArgumentList '-m', 'http.server', '8765', '--bind', '127.0.0.1', '--directory', 'media' -PassThru -WindowStyle Hidden
+          for ($i = 0; $i -lt 60; $i++) { try { Invoke-WebRequest -Method Head http://127.0.0.1:8765/h264-1080.mp4 -TimeoutSec 2 | Out-Null; break } catch { Start-Sleep 1 } }
+          $specs = @(
+            'best::http://127.0.0.1:8765/vp9-4k.webm',
+            'best::http://127.0.0.1:8765/h264-1080.mp4',
+            'hd1080:2-7:http://127.0.0.1:8765/h264-1080.mp4',
+            'best:3-8:http://127.0.0.1:8765/vp9-4k.webm',
+            'mp3::http://127.0.0.1:8765/h264-1080.mp4',
+            'wav:0-5:http://127.0.0.1:8765/vp9-4k.webm',
+            'prores::http://127.0.0.1:8765/vp9-4k.webm',
+            'prores:3-8:http://127.0.0.1:8765/h264-1080.mp4'
+          )
+          $log = "$PWD\dist\windows-selftest.txt"
+          $p = Start-Process -FilePath "$base\app\CosmoGrav.exe" -ArgumentList (@('--selftest') + $specs + @('--log', "`"$log`"")) -Wait -PassThru
+          Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue
+          Get-Content $log
+          if ($p.ExitCode -ne 0) { throw "self-test failed ($($p.ExitCode))" }
+          # Every MP4 must be H.264 + AAC, so it imports straight into Premiere.
+          $text = Get-Content -Raw $log
+          $mp4 = [regex]::Matches($text, '(?ms)^OK[^\n]* (best|hd1080) in [^\n]*\n(.*?)(?=^OK|^FAIL|^ALL|\z)')
+          if ($mp4.Count -ne 4) { throw "expected 4 MP4 results, got $($mp4.Count)" }
+          foreach ($m in $mp4) {
+            if ($m.Groups[2].Value -notmatch 'codec_name=h264' -or $m.Groups[2].Value -notmatch 'codec_name=aac') { throw "an MP4 is not H.264/AAC: $($m.Value)" }
+          }
+
+      - name: Photograph every screen (for the website guide)
+        shell: pwsh
+        timeout-minutes: 5
+        run: |
+          $dir = "$PWD\dist\shots"
+          $p = Start-Process -FilePath "$env:LOCALAPPDATA\CosmoGrav\app\CosmoGrav.exe" -ArgumentList '--shots', "`"$dir`"" -Wait -PassThru
+          Get-Content "$dir\shots.txt"
+          Get-ChildItem $dir -Filter *.png | Select-Object Name, Length
+          if (-not (Select-String -Path "$dir\shots.txt" -Pattern 'SHOTS OK' -Quiet)) { throw 'screenshots failed' }
+
+      - name: Keep the build and pictures with this run
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cosmograv-windows
+          path: dist/
+
+      - name: Keep the pictures on the "ci-preview" pre-release
+        if: always()
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -d dist/shots ] || exit 0
+          gh release view ci-preview >/dev/null 2>&1 || \
+            gh release create ci-preview --prerelease --latest=false --title "CI preview" --notes "Screenshots from automated test launches. Not for installing."
+          for f in dist/shots/*.png; do cp "$f" "dist/windows-$(basename "$f")"; done
+          gh release upload ci-preview dist/windows-*.png --clobber
+          [ -f dist/windows-selftest.txt ] && gh release upload ci-preview dist/windows-selftest.txt --clobber || true
+
+      - name: Publish release
+        # Preview and work branches only build and test; releases come from main.
+        # Tagged win-v… and never marked "latest", so the Mac installer and Mac update checks are unaffected.
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(tr -d '\r\n ' < windows/VERSION)
+          TAG="win-v$VERSION"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/CosmoGrav-Windows.zip --clobber
+          else
+            gh release create "$TAG" dist/CosmoGrav-Windows.zip \
+              --title "CosmoGrav for Windows $VERSION" \
+              --notes "Install or update with the one-line PowerShell command in the README." \
+              --latest=false
+          fi
