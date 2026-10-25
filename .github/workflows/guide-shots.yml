@@ -1,0 +1,102 @@
+name: Guide screenshots
+
+# Photographs every step of using the app for the how-to guide on creationofcosmos.com.
+# Never publishes a release: the pictures go on the "ci-preview" pre-release as guide-*.png.
+on:
+  push:
+    branches: ["claude/**", "guide/**"]
+    paths: ["app/**", ".github/workflows/guide-shots.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  shots:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compile
+        working-directory: app
+        run: swift build -c release --arch arm64 --arch x86_64
+
+      - name: Make the .app
+        run: bash app/bundle.sh
+
+      - name: Sharper screen (best effort)
+        continue-on-error: true
+        run: |
+          mkdir -p dist/guide
+          brew install displayplacer >/dev/null 2>&1 || exit 0
+          displayplacer list > dist/guide/displays.txt 2>&1 || true
+          ID=$(awk '/Persistent screen id:/ {print $4; exit}' dist/guide/displays.txt)
+          # Largest mode that still fits the app comfortably, preferring HiDPI ("scaling:on").
+          MODE=$(grep -Eo 'res:[0-9]+x[0-9]+ hz:[0-9]+ color_depth:[0-9]+ scaling:on' dist/guide/displays.txt \
+                 | awk -F'[:x ]' '{ if ($2 >= 1280 && $2 <= 1680) print $2*$3, $0 }' | sort -n | tail -1 | cut -d' ' -f2-)
+          [ -n "$ID" ] && [ -n "$MODE" ] && displayplacer "id:$ID $MODE" && echo "Set $MODE" | tee -a dist/guide/displays.txt
+          system_profiler SPDisplaysDataType | tee -a dist/guide/displays.txt
+
+      - name: Step 1, the installer in Terminal
+        continue-on-error: true
+        run: |
+          mkdir -p dist/guide
+          cat > "$HOME/Desktop/Install CosmoGrav.command" <<'EOF'
+          #!/bin/bash
+          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/raetori/ultra-hd-youtube-downloader/main/install.sh)" 2>&1 | tee /tmp/install.log
+          EOF
+          chmod +x "$HOME/Desktop/Install CosmoGrav.command"
+          open -a Terminal "$HOME/Desktop/Install CosmoGrav.command"
+          for i in $(seq 1 1500); do
+            grep -q "3/4" /tmp/install.log 2>/dev/null && [ ! -f dist/guide/install-progress.png ] && screencapture -x dist/guide/install-progress.png
+            grep -q "All set" /tmp/install.log 2>/dev/null && break
+            sleep 0.2
+          done
+          screencapture -x dist/guide/install-done.png
+          sleep 10
+          pkill -x CosmoGrav || true
+          osascript -e 'quit app "Terminal"' || pkill -x Terminal || true
+          sleep 2
+
+      - name: Every screen of the app
+        continue-on-error: true
+        run: |
+          mkdir -p /tmp/thumbs
+          for f in creationofcosmos flipears pudpod; do
+            curl -fsSL "https://creationofcosmos.com/assets/video/posters/$f.jpg" -o "/tmp/thumbs/$f.jpg" || true
+          done
+          APP="dist/CosmoGrav.app"
+          shoot() {  # name, extra open args...
+            local name=$1; shift
+            rm -f /tmp/cosmograv-shot-rect.txt
+            open --env COSMOGRAV_THUMBS=/tmp/thumbs "$APP" --args --shot "$name" "$@"
+            sleep 7
+            [ "$name" = clipboard ] && { open -a Finder; sleep 1; echo "https://youtu.be/7aG0j3otWZU" | pbcopy; open "$APP"; sleep 3; }
+            screencapture -x "dist/guide/$name-full.png"
+            [ -f /tmp/cosmograv-shot-rect.txt ] && screencapture -x -R"$(cat /tmp/cosmograv-shot-rect.txt)" "dist/guide/$name.png"
+            pkill -9 -x CosmoGrav || true
+            sleep 2
+          }
+          for s in empty clipboard added quality rename trim folder queue done settings update history; do shoot $s; done
+          shoot about --about
+
+          # A real H.264 file shown in Finder, like after clicking the magnifier.
+          F="$HOME/Library/Application Support/TeamYTDownloader/bin/ffmpeg"
+          "$F" -loglevel error -y -loop 1 -i /tmp/thumbs/creationofcosmos.jpg -f lavfi -i sine=frequency=440 -t 6 \
+            -vf "scale=1920:-2,format=yuv420p" -c:v libx264 -c:a aac -shortest "$HOME/Downloads/Creation of Cosmos.mp4" || true
+          open -R "$HOME/Downloads/Creation of Cosmos.mp4"
+          sleep 5
+          screencapture -x dist/guide/finder-full.png
+          ls -la dist/guide
+
+      - name: Keep the pictures on the "ci-preview" pre-release
+        if: always()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view ci-preview >/dev/null 2>&1 || \
+            gh release create ci-preview --prerelease --title "CI preview" --notes "Screenshots from automated test launches. Not for installing."
+          mkdir -p dist/upload
+          for f in dist/guide/*; do cp "$f" "dist/upload/guide-$(basename "$f")"; done
+          gh release upload ci-preview dist/upload/* --clobber

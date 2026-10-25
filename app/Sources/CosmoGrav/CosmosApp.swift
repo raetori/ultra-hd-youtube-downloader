@@ -24,6 +24,7 @@ struct CosmoGravApp: App {
         let queue = QueueManager(settings: settings)
         // Used by CI to photograph the queue with a few sample rows.
         if CommandLine.arguments.contains("--demo") { queue.loadDemo() }
+        if let shot = Shot.name { queue.loadShot(shot) }
         _queue = StateObject(wrappedValue: queue)
     }
 

@@ -38,6 +38,12 @@ struct ItemRow: View {
         .animation(Theme.ease, value: item.state)
         .animation(Theme.ease, value: hovering)
         .onHover { hovering = $0 }
+        .onAppear {
+            // Guide screenshot of the trim box (CI only).
+            if Shot.is("trim") && item.isTrimmed {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showTrim = true }
+            }
+        }
         .contextMenu {
             Button("Copy Link") {
                 NSPasteboard.general.clearContents()

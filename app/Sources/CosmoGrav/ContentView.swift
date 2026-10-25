@@ -37,13 +37,25 @@ struct ContentView: View {
         .animation(Theme.ease, value: dropTargeted)
         .sheet(isPresented: $showHistory) { HistoryView().preferredColorScheme(.dark) }
         .onAppear {
-            updater.startChecking()
             // Used by CI to photograph the About window.
             if CommandLine.arguments.contains("--about") { openWindow(id: "about") }
+            guard let shot = Shot.name else { return updater.startChecking() }
+            // Guide screenshots (CI only).
+            Shot.begin()
+            if shot == "update" { updater.availableVersion = "1.4.0" }
+            if shot == "history" { showHistory = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                switch shot {
+                case "folder": settings.chooseFolder()
+                case "settings": Shot.openSettings()
+                case "quality": Shot.openQualityMenu()
+                default: break
+                }
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            queue.checkClipboard()
-            updater.checkIfStale()
+            if Shot.name == nil || Shot.is("clipboard") { queue.checkClipboard() }
+            if Shot.name == nil { updater.checkIfStale() }
         }
     }
 
