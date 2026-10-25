@@ -34,9 +34,9 @@ namespace CosmoGrav
             done.OutputPath = Path.Combine(KnownFolders.Downloads, "Night drive b-roll.mov");
             foreach (var item in new[]
             {
+                trimmed,
                 Make("Creation of Cosmos launch film", "YouTube", 152, "4K", Quality.Best, ItemState.Downloading, 0.62, "62% · 14.2 MB/s · 0:09 left", 1),
                 Make("Behind the cut: Makati studio session", "Instagram", 48, "1080p", Quality.Hd1080, ItemState.Converting, 0.35, "Making it Premiere-ready · 35%", 2),
-                trimmed,
                 done,
                 Make("Client brief voice memo", "Facebook", 95, "720p", Quality.Wav, ItemState.Queued, 0, "Waiting for a free slot", 5),
             })
@@ -86,7 +86,7 @@ namespace CosmoGrav
                 await Save(window, folder, "03-queue.png");
 
                 // 4. Picking a quality for one video.
-                var trimmedRow = window.RowFor(queue.Items[2]);
+                var trimmedRow = window.RowFor(queue.Items[0]);
                 trimmedRow.BringIntoView();
                 await Wait(400);
                 trimmedRow.OpenQualityMenu();
@@ -121,7 +121,7 @@ namespace CosmoGrav
                 settings.Left = 80;
                 settings.Top = 40;
                 await Wait(1200);
-                await Save(settings, folder, "08-settings.png");
+                await Save(settings, folder, "08-settings.png", target: (FrameworkElement)settings.Scroller.Content);
                 settings.Close();
 
                 // 9. History (sample entries, not saved).
@@ -159,9 +159,20 @@ namespace CosmoGrav
         static Task Wait(int ms) => Task.Delay(ms);
 
         /// Draws the window's content (and any open popup) into a PNG at twice the size, for sharp pictures.
-        static async Task Save(Window window, string folder, string name, object popupOwner = null)
+        static async Task Save(Window window, string folder, string name, object popupOwner = null, FrameworkElement target = null)
         {
             await window.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+            // A target inside a scroll area (Settings) is drawn whole, with the window's margins around it.
+            if (target != null)
+            {
+                var m = target.Margin;
+                var pad = new Border { Background = window.Background, Padding = m, Child = new Image { Source = Render(target), Width = target.ActualWidth, Height = target.ActualHeight } };
+                pad.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                pad.Arrange(new Rect(pad.DesiredSize));
+                pad.UpdateLayout();
+                SavePng(Render(pad), Path.Combine(folder, name));
+                return;
+            }
             var content = (FrameworkElement)window.Content;
             int w = (int)Math.Ceiling(content.ActualWidth * Scale), h = (int)Math.Ceiling(content.ActualHeight * Scale);
             var visual = new DrawingVisual();
@@ -181,9 +192,14 @@ namespace CosmoGrav
             }
             var bitmap = new RenderTargetBitmap(w, h, 96 * Scale, 96 * Scale, PixelFormats.Pbgra32);
             bitmap.Render(visual);
+            SavePng(bitmap, Path.Combine(folder, name));
+        }
+
+        static void SavePng(BitmapSource bitmap, string path)
+        {
             var encoder = new PngBitmapEncoder();
             encoder.Frames.Add(BitmapFrame.Create(bitmap));
-            using (var file = File.Create(Path.Combine(folder, name))) encoder.Save(file);
+            using (var file = File.Create(path)) encoder.Save(file);
         }
 
         static FrameworkElement PopupRoot(object owner)
@@ -202,7 +218,11 @@ namespace CosmoGrav
             // Render through a brush so the element's own position in its parent doesn't shift the picture.
             var visual = new DrawingVisual();
             using (var dc = visual.RenderOpen())
-                dc.DrawRectangle(new VisualBrush(element) { Stretch = Stretch.None, AlignmentX = AlignmentX.Left, AlignmentY = AlignmentY.Top },
+                dc.DrawRectangle(new VisualBrush(element)
+                {
+                    // Map the element's own 0,0..width,height exactly, ignoring glows that spill past its edges.
+                    ViewboxUnits = BrushMappingMode.Absolute, Viewbox = new Rect(0, 0, element.ActualWidth, element.ActualHeight), Stretch = Stretch.Fill,
+                },
                                  null, new Rect(0, 0, element.ActualWidth, element.ActualHeight));
             bitmap.Render(visual);
             return bitmap;
