@@ -1,11 +1,11 @@
 #!/bin/bash
-# Install Cosmos Media Downloader: sets up yt-dlp, ffmpeg and Deno in your user folder and installs the app.
+# Install CosmoGrav (formerly Cosmos Media Downloader): sets up yt-dlp, ffmpeg and Deno in your user folder and installs the app.
 # No Homebrew, no admin password. Safe to run again to repair or update.
 #   --update   used by the app's "Update now" button: skips the tool setup when it already works
 
 set -u
-APP_NAME="Cosmos Media Downloader"
-APP_ZIP="https://github.com/raetori/ultra-hd-youtube-downloader/releases/latest/download/CosmosMediaDownloader.zip"
+APP_NAME="CosmoGrav"
+RELEASES="https://github.com/raetori/ultra-hd-youtube-downloader/releases/latest/download"
 BASE="$HOME/Library/Application Support/TeamYTDownloader"
 BIN="$BASE/bin"
 TMP="$(mktemp -d)"
@@ -22,7 +22,7 @@ if [ "$UPDATE" = 0 ]; then
   clear
   cat <<'EOF'
 ==============================================
-   Cosmos Media Downloader setup
+   CosmoGrav setup
    by Creation of Cosmos - creationofcosmos.com
 ==============================================
 This takes 1-3 minutes and only needs to be done once.
@@ -31,7 +31,7 @@ EOF
 fi
 
 [ "$(uname -s)" = "Darwin" ] || fail "this installer is for Macs only."
-[ "$(sw_vers -productVersion | cut -d. -f1)" -ge 13 ] || fail "Cosmos Media Downloader needs macOS 13 (Ventura) or newer."
+[ "$(sw_vers -productVersion | cut -d. -f1)" -ge 13 ] || fail "CosmoGrav needs macOS 13 (Ventura) or newer."
 if [ "$(sysctl -n hw.optional.arm64 2>/dev/null)" = "1" ]; then ARCH=arm64; else ARCH=x86_64; fi
 mkdir -p "$BIN" || fail "couldn't create $BIN"
 
@@ -79,27 +79,31 @@ else
 fi
 
 say "4/4  Installing the app..."
-fetch "$APP_ZIP" "$TMP/app.zip" || fail "couldn't download the app. Check your internet connection."
+# Older releases used the app's former name, so accept either.
+fetch "$RELEASES/CosmoGrav.zip" "$TMP/app.zip" || fetch "$RELEASES/CosmosMediaDownloader.zip" "$TMP/app.zip" \
+  || fail "couldn't download the app. Check your internet connection."
 ditto -x -k "$TMP/app.zip" "$TMP/app" || fail "the app download was damaged. Run the installer again."
-[ -d "$TMP/app/$APP_NAME.app" ] || fail "the app download was incomplete. Run the installer again."
+NEW_APP=$(find "$TMP/app" -maxdepth 1 -name "*.app" | head -1)
+[ -n "$NEW_APP" ] || fail "the app download was incomplete. Run the installer again."
 
 if [ -w /Applications ]; then APPS=/Applications; else APPS="$HOME/Applications"; mkdir -p "$APPS"; fi
 APP="$APPS/$APP_NAME.app"
 # Close a running copy and remove earlier versions of the app.
-pkill -x CosmosMediaDownloader 2>/dev/null && sleep 1
-for old in "$APP" "$APPS/Cosmos YouTube Downloader.app" "$APPS/YouTube Downloader.app" \
-           "$HOME/Applications/Cosmos YouTube Downloader.app" "$HOME/Applications/YouTube Downloader.app"; do
+{ pkill -x CosmoGrav; pkill -x CosmosMediaDownloader; } 2>/dev/null && sleep 1
+for old in "$APP" "$APPS/Cosmos Media Downloader.app" "$APPS/Cosmos YouTube Downloader.app" "$APPS/YouTube Downloader.app" \
+           "$HOME/Applications/Cosmos Media Downloader.app" "$HOME/Applications/Cosmos YouTube Downloader.app" \
+           "$HOME/Applications/YouTube Downloader.app"; do
   rm -rf "$old"
 done
 rm -f "$BASE/ytdl.sh"
-ditto "$TMP/app/$APP_NAME.app" "$APP" || fail "couldn't copy the app into $APPS."
+ditto "$NEW_APP" "$APP" || fail "couldn't copy the app into $APPS."
 xattr -cr "$APP" 2>/dev/null
 
 say "All set!"
 if [ "$UPDATE" = 0 ]; then
   cat <<EOF
 "$APP_NAME" is in your $( [ "$APPS" = /Applications ] && echo "Applications folder" || echo "Applications folder (inside your home folder)" ).
-Open it any time from Launchpad or Spotlight (Cmd + Space, type "Cosmos").
+Open it any time from Launchpad or Spotlight (Cmd + Space, type "CosmoGrav").
 Tip: right-click its Dock icon > Options > Keep in Dock.
 
 Opening it now... You can close this window.

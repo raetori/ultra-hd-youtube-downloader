@@ -57,7 +57,7 @@ struct ContentView: View {
                     .frame(width: 28, height: 28)
                     .shadow(color: Theme.gold.opacity(0.35), radius: 8)
                 VStack(alignment: .leading, spacing: 5) {
-                    Eyebrow("Visual Lab · Media Downloader")
+                    Eyebrow("CosmoGrav · Media Downloader")
                     Wordmark(size: 18)
                 }
                 Spacer()

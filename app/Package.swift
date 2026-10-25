@@ -2,9 +2,9 @@
 import PackageDescription
 
 let package = Package(
-    name: "CosmosMediaDownloader",
+    name: "CosmoGrav",
     platforms: [.macOS(.v13)],
     targets: [
-        .executableTarget(name: "CosmosMediaDownloader", path: "Sources/CosmosMediaDownloader")
+        .executableTarget(name: "CosmoGrav", path: "Sources/CosmoGrav")
     ]
 )

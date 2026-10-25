@@ -25,27 +25,27 @@ jobs:
       - name: Smoke test (launch the app and take a screenshot)
         continue-on-error: true
         run: |
-          open "dist/Cosmos Media Downloader.app"
+          open "dist/CosmoGrav.app"
           sleep 8
-          pgrep -x CosmosMediaDownloader
+          pgrep -x CosmoGrav
           screencapture -x dist/screenshot.png
-          pkill -x CosmosMediaDownloader || true
+          pkill -x CosmoGrav || true
           sleep 2
-          open "dist/Cosmos Media Downloader.app" --args --demo
+          open "dist/CosmoGrav.app" --args --demo
           sleep 8
           screencapture -x dist/screenshot-demo.png
-          pkill -9 -x CosmosMediaDownloader || true
+          pkill -9 -x CosmoGrav || true
           sleep 2
-          open "dist/Cosmos Media Downloader.app" --args --about
+          open "dist/CosmoGrav.app" --args --about
           sleep 8
           screencapture -x dist/screenshot-about.png
-          pkill -9 -x CosmosMediaDownloader || true
+          pkill -9 -x CosmoGrav || true
 
       - name: End-to-end test (real downloads with the Mac's own encoder)
         continue-on-error: true
         run: |
           bash install.sh --update || true
-          pkill -x CosmosMediaDownloader || true
+          pkill -x CosmoGrav || true
           # YouTube blocks cloud machines like this one ("confirm you're not a bot"), so test media is generated here and served locally:
           # a 4K VP9/Opus WebM (must be converted), an H.264/AAC MP4 (must be copied untouched) and a trimmed clip.
           F="$HOME/Library/Application Support/TeamYTDownloader/bin/ffmpeg"
@@ -55,7 +55,7 @@ jobs:
           python3 -m http.server 8765 --bind 127.0.0.1 >/dev/null 2>&1 &
           for i in $(seq 1 60); do curl -fsI http://127.0.0.1:8765/h264-1080.mp4 >/dev/null 2>&1 && break; sleep 1; done
           cd "$GITHUB_WORKSPACE"
-          "dist/Cosmos Media Downloader.app/Contents/MacOS/CosmosMediaDownloader" --selftest \
+          "dist/CosmoGrav.app/Contents/MacOS/CosmoGrav" --selftest \
             "best::http://127.0.0.1:8765/vp9-4k.webm" \
             "best::http://127.0.0.1:8765/h264-1080.mp4" \
             "hd1080:2-7:http://127.0.0.1:8765/h264-1080.mp4" \
@@ -85,10 +85,10 @@ jobs:
         run: |
           VERSION=$(cat app/VERSION)
           if gh release view "v$VERSION" >/dev/null 2>&1; then
-            gh release upload "v$VERSION" dist/CosmosMediaDownloader.zip --clobber
+            gh release upload "v$VERSION" dist/CosmoGrav.zip --clobber
           else
-            gh release create "v$VERSION" dist/CosmosMediaDownloader.zip \
-              --title "Cosmos Media Downloader $VERSION" \
+            gh release create "v$VERSION" dist/CosmoGrav.zip \
+              --title "CosmoGrav $VERSION" \
               --notes "Install or update with the one-line command in the README." \
               --latest
           fi

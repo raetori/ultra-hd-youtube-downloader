@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleExecutable</key>
-	<string>CosmosMediaDownloader</string>
+	<string>CosmoGrav</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.creationofcosmos.mediadownloader</string>
 	<key>CFBundleName</key>
-	<string>Cosmos Media Downloader</string>
+	<string>CosmoGrav</string>
 	<key>CFBundleDisplayName</key>
-	<string>Cosmos Media Downloader</string>
+	<string>CosmoGrav</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundlePackageType</key>

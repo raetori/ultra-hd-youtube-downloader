@@ -1,12 +1,12 @@
 #!/bin/bash
-# Turns the compiled binary into "Cosmos Media Downloader.app" and zips it. Runs on the macOS build machine.
+# Turns the compiled binary into "CosmoGrav.app" and zips it. Runs on the macOS build machine.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 VERSION=$(cat app/VERSION)
-APP="dist/Cosmos Media Downloader.app"
+APP="dist/CosmoGrav.app"
 rm -rf dist
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp app/.build/apple/Products/Release/CosmosMediaDownloader "$APP/Contents/MacOS/"
+cp app/.build/apple/Products/Release/CosmoGrav "$APP/Contents/MacOS/"
 sed "s/@VERSION@/$VERSION/g" app/Info.plist > "$APP/Contents/Info.plist"
 
 # App icon from assets/icon.png.
@@ -20,5 +20,5 @@ iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
 
 # Ad-hoc signature so Apple Silicon Macs will run it.
 codesign --force --deep --sign - "$APP"
-(cd dist && ditto -c -k --keepParent "Cosmos Media Downloader.app" CosmosMediaDownloader.zip)
-echo "Built dist/CosmosMediaDownloader.zip (version $VERSION)"
+(cd dist && ditto -c -k --keepParent "CosmoGrav.app" CosmoGrav.zip)
+echo "Built dist/CosmoGrav.zip (version $VERSION)"
