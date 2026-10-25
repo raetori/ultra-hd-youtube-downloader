@@ -1,0 +1,154 @@
+<Window x:Class="CosmoGrav.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:CosmoGrav"
+        Title="CosmoGrav" Width="940" Height="700" MinWidth="820" MinHeight="560"
+        Background="{StaticResource Ink}" Foreground="White"
+        FontFamily="{StaticResource UiFont}" WindowStartupLocation="CenterScreen"
+        AllowDrop="True" UseLayoutRounding="True" TextOptions.TextFormattingMode="Ideal"
+        Icon="pack://application:,,,/icon.ico">
+    <Window.TaskbarItemInfo>
+        <TaskbarItemInfo x:Name="Taskbar"/>
+    </Window.TaskbarItemInfo>
+    <Grid x:Name="Root">
+        <DockPanel>
+            <!-- Header: mark, wordmark, buttons, link field -->
+            <Grid DockPanel.Dock="Top" ClipToBounds="True">
+                <Border Background="{StaticResource Space}"/>
+                <local:Starfield/>
+                <!-- Warm light rising from below the horizon, like the black hole's disk on the site. -->
+                <Ellipse Height="200" Margin="-120,0,-120,-150" VerticalAlignment="Bottom" IsHitTestVisible="False">
+                    <Ellipse.Fill>
+                        <RadialGradientBrush>
+                            <GradientStop Color="#38EDC287" Offset="0"/>
+                            <GradientStop Color="#14B3753D" Offset="0.5"/>
+                            <GradientStop Color="#00000000" Offset="1"/>
+                        </RadialGradientBrush>
+                    </Ellipse.Fill>
+                    <Ellipse.Effect><BlurEffect Radius="30"/></Ellipse.Effect>
+                </Ellipse>
+                <Border IsHitTestVisible="False">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0.5" EndPoint="0,1">
+                            <GradientStop Color="#00050506" Offset="0"/>
+                            <GradientStop Color="#FF050506" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                </Border>
+
+                <StackPanel Margin="24,22,24,20">
+                    <DockPanel Margin="0,0,0,18">
+                        <Path Data="M82.70,79.44 A44,44 0 1 1 82.70,20.56 L71.55,30.60 A29,29 0 1 0 71.55,69.40 Z M89.5,50 A9.5,9.5 0 1 1 70.5,50 A9.5,9.5 0 1 1 89.5,50 Z"
+                              Fill="White" Stretch="Uniform" Width="28" Height="28" DockPanel.Dock="Left" Margin="0,0,14,0" VerticalAlignment="Center">
+                            <Path.Effect><DropShadowEffect Color="{StaticResource GoldColor}" BlurRadius="16" ShadowDepth="0" Opacity="0.35"/></Path.Effect>
+                        </Path>
+                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
+                            <Button Style="{StaticResource GhostButton}" Click="History_Click" Margin="0,0,8,0" ToolTip="Everything you downloaded (Ctrl+H)">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE81C;" FontFamily="{StaticResource IconFont}" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBlock Text="History"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource GhostButton}" Content="About" Click="About_Click" Margin="0,0,8,0"/>
+                            <Button Style="{StaticResource GhostButton}" Content="Settings" Click="Settings_Click" ToolTip="Ctrl+,"/>
+                        </StackPanel>
+                        <StackPanel VerticalAlignment="Center">
+                            <local:TrackedText Text="CosmoGrav · Media Downloader" Mono="True" FontSize="9.5" Tracking="2.2" Foreground="{StaticResource Ember}" Margin="0,0,0,6" HorizontalAlignment="Left"/>
+                            <local:TrackedText Text="Creation of Cosmos" FontSize="18" FontWeight="Light" Tracking="5.8" Foreground="#EBFFFFFF" HorizontalAlignment="Left"/>
+                        </StackPanel>
+                    </DockPanel>
+
+                    <DockPanel>
+                        <Button x:Name="PasteButton" Style="{StaticResource PrimaryButton}" DockPanel.Dock="Right" Margin="10,0,0,0" Click="Paste_Click"
+                                ToolTip="Add every link on the clipboard (Ctrl+Shift+V)" Content="Paste links  →"/>
+                        <Border CornerRadius="999" Background="#0DFFFFFF" BorderBrush="#1FFFFFFF" BorderThickness="1" Padding="16,9">
+                            <DockPanel>
+                                <TextBlock Text="&#xE71B;" FontFamily="{StaticResource IconFont}" FontSize="12" Foreground="#CCEDC287" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                <Grid>
+                                    <TextBlock x:Name="LinkHint" Text="Paste links from YouTube, TikTok, Instagram, Facebook… several at once is fine"
+                                               Foreground="#61FFFFFF" FontSize="13" VerticalAlignment="Center" IsHitTestVisible="False" TextTrimming="CharacterEllipsis"/>
+                                    <TextBox x:Name="LinkField" Style="{StaticResource PlainTextBox}" KeyDown="LinkField_KeyDown" TextChanged="LinkField_TextChanged"/>
+                                </Grid>
+                            </DockPanel>
+                        </Border>
+                    </DockPanel>
+                    <TextBlock x:Name="AddMessage" FontFamily="{StaticResource MonoFont}" FontSize="10.5" Foreground="#8CFFFFFF" Margin="4,8,0,0" Visibility="Collapsed"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Quality, folder, how many at once -->
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="24,8,24,10">
+                <local:TrackedText Text="Quality" Mono="True" FontSize="9.5" Tracking="2.2" Foreground="{StaticResource TextDim}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <ComboBox x:Name="QualityPicker" Style="{StaticResource DarkCombo}" Width="230" SelectionChanged="QualityPicker_Changed"
+                          ToolTip="Used for links you add from now on. Each video can also be changed on its own."/>
+                <local:TrackedText Text="Save to" Mono="True" FontSize="9.5" Tracking="2.2" Foreground="{StaticResource TextDim}" VerticalAlignment="Center" Margin="24,0,10,0"/>
+                <Button x:Name="FolderButton" Style="{StaticResource GhostButton}" Click="Folder_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE8B7;" FontFamily="{StaticResource IconFont}" FontSize="12" Foreground="{StaticResource Gold}" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                        <TextBlock x:Name="FolderText" MaxWidth="180" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                        <TextBlock Text="&#xE70D;" FontFamily="{StaticResource IconFont}" FontSize="8" Foreground="{StaticResource TextDim}" VerticalAlignment="Center" Margin="7,1,0,0"/>
+                    </StackPanel>
+                </Button>
+                <local:TrackedText Text="At once" Mono="True" FontSize="9.5" Tracking="2.2" Foreground="{StaticResource TextDim}" VerticalAlignment="Center" Margin="24,0,10,0"/>
+                <Border CornerRadius="999" BorderBrush="#24FFFFFF" BorderThickness="1" Background="#0AFFFFFF" Padding="1" ToolTip="How many videos download at the same time">
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton x:Name="Once1" Style="{StaticResource Segment}" Content="1" GroupName="AtOnce" Checked="AtOnce_Checked" Tag="1"/>
+                        <RadioButton x:Name="Once2" Style="{StaticResource Segment}" Content="2" GroupName="AtOnce" Checked="AtOnce_Checked" Tag="2"/>
+                        <RadioButton x:Name="Once3" Style="{StaticResource Segment}" Content="3" GroupName="AtOnce" Checked="AtOnce_Checked" Tag="3"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- Banners: setup missing, copied links, update available -->
+            <StackPanel x:Name="Banners" DockPanel.Dock="Top" Margin="24,0,24,0"/>
+
+            <!-- Footer -->
+            <Border DockPanel.Dock="Bottom" Background="#99000000" Padding="24,14">
+                <Border.BorderBrush>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                        <GradientStop Color="#00FFFFFF" Offset="0"/>
+                        <GradientStop Color="#14FFFFFF" Offset="0.5"/>
+                        <GradientStop Color="#00FFFFFF" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.BorderBrush>
+                <Border.BorderThickness>0,1,0,0</Border.BorderThickness>
+                <DockPanel>
+                    <Button Style="{StaticResource LinkButton}" Click="Website_Click" ToolTip="creationofcosmos.com" DockPanel.Dock="Left" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="M82.70,79.44 A44,44 0 1 1 82.70,20.56 L71.55,30.60 A29,29 0 1 0 71.55,69.40 Z M89.5,50 A9.5,9.5 0 1 1 70.5,50 A9.5,9.5 0 1 1 89.5,50 Z"
+                                  Fill="#99FFFFFF" Stretch="Uniform" Width="12" Height="12" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <local:TrackedText Text="Creation of Cosmos" FontSize="9.5" Tracking="2.6" Foreground="#99FFFFFF" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <local:TrackedText x:Name="StatusText" Mono="True" FontSize="9.5" Tracking="1.4" Foreground="#CCEDC287" VerticalAlignment="Center" Margin="16,0,0,0" DockPanel.Dock="Left"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button x:Name="ClearButton" Style="{StaticResource GhostButton}" Content="Clear finished" Margin="0,0,10,0" Click="Clear_Click"/>
+                        <Button x:Name="StopButton" Style="{StaticResource GhostButton}" Content="Stop all" Margin="0,0,10,0" Click="Stop_Click"/>
+                        <Button x:Name="DownloadButton" Style="{StaticResource PrimaryButton}" Content="Download  →" Click="Download_Click" ToolTip="Ctrl+Enter"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <!-- Queue, or the empty state -->
+            <Grid>
+                <ScrollViewer x:Name="ListScroll" VerticalScrollBarVisibility="Auto" Padding="24,14,24,4" Visibility="Collapsed">
+                    <StackPanel x:Name="List"/>
+                </ScrollViewer>
+                <StackPanel x:Name="EmptyState" VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <local:OrbRing Width="92" Height="92" LineWidth="1.3" Margin="0,0,0,26"/>
+                    <local:TrackedText Text="Ready when you are" Mono="True" FontSize="9.5" Tracking="2.2" Foreground="{StaticResource Ember}" HorizontalAlignment="Center" Margin="0,0,0,14"/>
+                    <TextBlock Text="Bring the source to the edit suite." FontSize="22" FontWeight="Medium" Foreground="White" HorizontalAlignment="Center" Margin="0,0,0,14"/>
+                    <TextBlock TextAlignment="Center" FontSize="12.5" Foreground="{StaticResource TextDim}" LineHeight="19" HorizontalAlignment="Center">
+                        Copy one or more links, then click Paste links. You can also drag links here.<LineBreak/>Rename, trim and pick the quality for each video before downloading.
+                    </TextBlock>
+                </StackPanel>
+            </Grid>
+        </DockPanel>
+
+        <!-- Drop highlight -->
+        <Rectangle x:Name="DropOverlay" Margin="10" RadiusX="16" RadiusY="16" Stroke="#B3EDC287" StrokeThickness="1.2" StrokeDashArray="5 5"
+                   IsHitTestVisible="False" Opacity="0">
+            <Rectangle.Effect><DropShadowEffect Color="{StaticResource GoldColor}" BlurRadius="20" ShadowDepth="0" Opacity="0.5"/></Rectangle.Effect>
+        </Rectangle>
+    </Grid>
+</Window>
