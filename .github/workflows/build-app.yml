@@ -35,6 +35,11 @@ jobs:
           sleep 8
           screencapture -x dist/screenshot-demo.png
           pkill -9 -x CosmosMediaDownloader || true
+          sleep 2
+          open "dist/Cosmos Media Downloader.app" --args --about
+          sleep 8
+          screencapture -x dist/screenshot-about.png
+          pkill -9 -x CosmosMediaDownloader || true
 
       - name: End-to-end test (real downloads with the Mac's own encoder)
         continue-on-error: true
@@ -69,6 +74,7 @@ jobs:
             gh release create ci-preview --prerelease --title "CI preview" --notes "Screenshots from automated test launches. Not for installing."
           gh release upload ci-preview dist/screenshot.png --clobber
           [ -f dist/screenshot-demo.png ] && gh release upload ci-preview dist/screenshot-demo.png --clobber
+          [ -f dist/screenshot-about.png ] && gh release upload ci-preview dist/screenshot-about.png --clobber
           [ -f dist/selftest.txt ] && gh release upload ci-preview dist/selftest.txt --clobber
 
       - name: Publish release

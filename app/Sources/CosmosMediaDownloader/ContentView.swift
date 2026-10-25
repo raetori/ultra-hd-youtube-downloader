@@ -9,6 +9,7 @@ struct ContentView: View {
     @State private var showHistory = false
     @State private var dropTargeted = false
     @State private var addMessage: String?
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         VStack(spacing: 0) {
@@ -35,7 +36,11 @@ struct ContentView: View {
         }
         .animation(Theme.ease, value: dropTargeted)
         .sheet(isPresented: $showHistory) { HistoryView().preferredColorScheme(.dark) }
-        .onAppear { updater.startChecking() }
+        .onAppear {
+            updater.startChecking()
+            // Used by CI to photograph the About window.
+            if CommandLine.arguments.contains("--about") { openWindow(id: "about") }
+        }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             queue.checkClipboard()
             updater.checkIfStale()
@@ -60,6 +65,7 @@ struct ContentView: View {
                     Label("History", systemImage: "clock.arrow.circlepath")
                 }
                 .buttonStyle(GhostButtonStyle())
+                AboutButton()
                 OpenSettingsButton(label: "Settings", ghost: true)
             }
 
