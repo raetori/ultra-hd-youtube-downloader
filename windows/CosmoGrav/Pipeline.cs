@@ -273,7 +273,8 @@ namespace CosmoGrav
             {
                 if (videoIndex == null) { DebugLog?.Invoke("section: no video stream"); return false; }
                 maps.AddRange(new[] { "-map", videoIndex + ":v:0?" });
-                if (audioIndex != null) maps.AddRange(new[] { "-map", audioIndex + ":a:0?" });
+                // Some sites don't say a file has sound, so take the video file's own audio when there is no separate track.
+                maps.AddRange(new[] { "-map", (audioIndex ?? videoIndex) + ":a:0?" });
                 codecArgs = (await VideoArgs(quality, height, fps)).Concat(AudioArgs(quality)).ToList();
                 container = ContainerArgs(quality).ToList();
             }
@@ -304,8 +305,33 @@ namespace CosmoGrav
                 if (handle.Cancelled) throw new OperationCanceledException();
             }
             // If reading straight from the site fails (expired link, odd server), the full download still works.
-            if (run.Status != 0) DebugLog?.Invoke("section: ffmpeg failed: " + Tail(run.Stderr, 400));
-            return run.Status == 0 && File.Exists(output);
+            if (run.Status != 0) { DebugLog?.Invoke("section: ffmpeg failed: " + Tail(run.Stderr, 400)); return false; }
+            if (!File.Exists(output)) return false;
+            // Files without a seek index can come back short or silent; the full download is always right.
+            var check = await ProbeFile(output);
+            if (length.HasValue && (check.Duration ?? 0) < length.Value * 0.95 - 0.2)
+            {
+                DebugLog?.Invoke($"section: got {check.Duration:0.00}s of {length:0.00}s, falling back");
+                return false;
+            }
+            if (!quality.IsAudio() && check.AudioCodec == null && await HasAudio(formats.Select(f => f.Str("url")).ToList(), formats))
+            {
+                DebugLog?.Invoke("section: sound missing, falling back");
+                return false;
+            }
+            return true;
+        }
+
+        /// Whether any of the site's streams carries sound (asked of ffprobe when the site doesn't say).
+        static async Task<bool> HasAudio(List<string> urls, List<Dictionary<string, object>> formats)
+        {
+            if (formats.Any(f => (f.Str("acodec") ?? "unknown") != "none" && f.Str("acodec") != null)) return true;
+            foreach (var url in urls)
+            {
+                var r = await Runner.Run(Tools.Ffprobe, new[] { "-v", "error", "-select_streams", "a", "-show_entries", "stream=codec_type", "-of", "csv=p=0", url });
+                if (r.Stdout.Contains("audio")) return true;
+            }
+            return false;
         }
 
         static string Tail(string s, int n) => s.Length <= n ? s : s.Substring(s.Length - n);
