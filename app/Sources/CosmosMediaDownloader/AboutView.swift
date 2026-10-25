@@ -65,9 +65,9 @@ struct AboutView: View {
             .lineSpacing(3)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 44)
-            .padding(.vertical, 36)
+            .padding(.vertical, 28)
         }
-        .frame(width: 500, height: 720)
+        .frame(width: 500, height: 670)
         .preferredColorScheme(.dark)
     }
 }
