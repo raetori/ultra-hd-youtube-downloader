@@ -104,7 +104,7 @@ namespace CosmoGrav
             Updating = true;
             QueueManager.Shared?.StopEverything();
             var log = Path.Combine(Tools.Base, "update.log").Replace("'", "''");
-            var command = "$ProgressPreference='SilentlyContinue'; Start-Sleep -Seconds 1; $env:COSMOGRAV_UPDATE='1'; " +
+            var command = "$ProgressPreference='SilentlyContinue'; Start-Sleep -Seconds 1; $env:COSMOGRAV_UPDATE='1'; $env:COSMOGRAV_EXE=$null; $env:COSMOGRAV_GUI=$null; " +
                           $"& {{ irm '{Tools.RepoRaw}/install.ps1' | iex }} *>&1 | Out-File -FilePath '{log}' -Encoding utf8";
             try
             {

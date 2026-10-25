@@ -33,5 +33,7 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="icon.ico" />
+    <!-- The one-line installer, built in so CosmoGrav-Setup.exe can install itself the same way. -->
+    <EmbeddedResource Include="..\..\install.ps1" LogicalName="install.ps1" />
   </ItemGroup>
 </Project>

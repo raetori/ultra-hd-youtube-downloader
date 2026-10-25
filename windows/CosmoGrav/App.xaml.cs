@@ -36,6 +36,20 @@ namespace CosmoGrav
                 return;
             }
 
+            // CosmoGrav-Setup.exe opened from Downloads: install it. --install does the same without a window (build machine).
+            if (args.Contains("--install"))
+            {
+                ShutdownMode = ShutdownMode.OnExplicitShutdown;
+                Setup.RunHeadless(Arg(args, "--log"));
+                return;
+            }
+            if (args.Length == 0 && Setup.IsNeeded)
+            {
+                MainWindow = new SetupWindow();
+                MainWindow.Show();
+                return;
+            }
+
             var shots = Arg(args, "--shots");
             if (shots == null && !args.Contains("--demo") && !TakeSingleInstance()) { Shutdown(); return; }
 

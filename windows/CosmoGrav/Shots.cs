@@ -145,6 +145,13 @@ namespace CosmoGrav
                 await Save(about, folder, "10-about.png");
                 about.Close();
 
+                // 11. The setup window someone sees after downloading CosmoGrav-Setup.exe.
+                var setup = new SetupWindow { WindowStartupLocation = WindowStartupLocation.Manual, Left = 80, Top = 40 };
+                setup.Show();
+                await Wait(1500);
+                await Save(setup, folder, "11-windows-setup.png");
+                setup.Close();
+
                 try { Directory.Delete(thumbs, true); } catch { }
                 log.Add("SHOTS OK");
             }
