@@ -24,18 +24,16 @@ jobs:
       - name: Make the .app
         run: bash app/bundle.sh
 
-      - name: Sharper screen (best effort)
+      - name: Bigger screen, so windows aren't squeezed against the menu bar and Dock
         continue-on-error: true
         run: |
           mkdir -p dist/guide
           brew install displayplacer >/dev/null 2>&1 || exit 0
           displayplacer list > dist/guide/displays.txt 2>&1 || true
           ID=$(awk '/Persistent screen id:/ {print $4; exit}' dist/guide/displays.txt)
-          # Largest mode that still fits the app comfortably, preferring HiDPI ("scaling:on").
-          MODE=$(grep -Eo 'res:[0-9]+x[0-9]+ hz:[0-9]+ color_depth:[0-9]+ scaling:on' dist/guide/displays.txt \
-                 | awk -F'[:x ]' '{ if ($2 >= 1280 && $2 <= 1680) print $2*$3, $0 }' | sort -n | tail -1 | cut -d' ' -f2-)
-          [ -n "$ID" ] && [ -n "$MODE" ] && displayplacer "id:$ID $MODE" && echo "Set $MODE" | tee -a dist/guide/displays.txt
-          system_profiler SPDisplaysDataType | tee -a dist/guide/displays.txt
+          MODE=$(grep -Eo 'res:1600x900 hz:[0-9]+ color_depth:[0-9]+' dist/guide/displays.txt | head -1)
+          [ -n "$ID" ] && [ -n "$MODE" ] && displayplacer "id:$ID $MODE scaling:off origin:(0,0) degree:0"
+          sleep 3
 
       - name: Step 1, the installer in Terminal
         continue-on-error: true
@@ -44,6 +42,7 @@ jobs:
           cat > "$HOME/Desktop/Install CosmoGrav.command" <<'EOF'
           #!/bin/bash
           /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/raetori/ultra-hd-youtube-downloader/main/install.sh)" 2>&1 | tee /tmp/install.log
+          sleep 600
           EOF
           chmod +x "$HOME/Desktop/Install CosmoGrav.command"
           open -a Terminal "$HOME/Desktop/Install CosmoGrav.command"
@@ -55,7 +54,7 @@ jobs:
           screencapture -x dist/guide/install-done.png
           sleep 10
           pkill -x CosmoGrav || true
-          osascript -e 'quit app "Terminal"' || pkill -x Terminal || true
+          pkill -x Terminal || true
           sleep 2
 
       - name: Every screen of the app
@@ -84,6 +83,8 @@ jobs:
           F="$HOME/Library/Application Support/TeamYTDownloader/bin/ffmpeg"
           "$F" -loglevel error -y -loop 1 -i /tmp/thumbs/creationofcosmos.jpg -f lavfi -i sine=frequency=440 -t 6 \
             -vf "scale=1920:-2,format=yuv420p" -c:v libx264 -c:a aac -shortest "$HOME/Downloads/Creation of Cosmos.mp4" || true
+          killall Finder || true
+          sleep 3
           open -R "$HOME/Downloads/Creation of Cosmos.mp4"
           sleep 5
           screencapture -x dist/guide/finder-full.png
