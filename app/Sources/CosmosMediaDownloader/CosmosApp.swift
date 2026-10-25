@@ -39,13 +39,20 @@ struct CosmosMediaDownloaderApp: App {
         .defaultSize(width: 920, height: 680)
         .commands {
             CommandGroup(replacing: .appInfo) {
-                Button("About Cosmos Media Downloader") { AppDelegate.showAbout() }
+                AboutButton(title: "About Cosmos Media Downloader", ghost: false)
             }
             CommandGroup(replacing: .newItem) {}
             CommandGroup(replacing: .help) {
                 Link("Creation of Cosmos Website", destination: Tools.website)
             }
         }
+
+        Window("About Cosmos Media Downloader", id: "about") {
+            AboutView()
+        }
+        .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentSize)
+        .defaultPosition(.center)
 
         Settings {
             SettingsView()
@@ -79,19 +86,5 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         QueueManager.shared?.stopEverything()
         try? FileManager.default.removeItem(at: Tools.workRoot)
-    }
-
-    static func showAbout() {
-        let credits = NSMutableAttributedString(
-            string: "Made by Creation of Cosmos\n",
-            attributes: [.font: NSFont.systemFont(ofSize: 11)])
-        credits.append(NSAttributedString(
-            string: "creationofcosmos.com",
-            attributes: [.link: Tools.website, .font: NSFont.systemFont(ofSize: 11)]))
-        credits.append(NSAttributedString(
-            string: "\n\nBuilt on yt-dlp, FFmpeg and Deno.\nPlease only download content you have the rights to use.",
-            attributes: [.font: NSFont.systemFont(ofSize: 10), .foregroundColor: NSColor.secondaryLabelColor]))
-        NSApp.orderFrontStandardAboutPanel(options: [.credits: credits])
-        NSApp.activate(ignoringOtherApps: true)
     }
 }
