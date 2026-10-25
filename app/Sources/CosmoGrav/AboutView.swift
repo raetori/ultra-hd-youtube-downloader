@@ -42,7 +42,7 @@ struct AboutView: View {
 
                 GoldRule().padding(.vertical, 24)
 
-                Text("MEDIA DOWNLOADER · VERSION \(Updater.currentVersion)")
+                Text("COSMOGRAV · VERSION \(Updater.currentVersion)")
                     .font(.mono(9.5))
                     .tracking(1.6)
                     .foregroundStyle(Theme.gold.opacity(0.8))

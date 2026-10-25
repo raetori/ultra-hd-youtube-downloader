@@ -309,7 +309,7 @@ final class QueueManager: ObservableObject {
             guard granted else { return }
             let content = UNMutableNotificationContent()
             content.title = "Downloads finished"
-            content.body = "\(done) ready" + (failed > 0 ? ", \(failed) failed" : "") + ". Click to open Cosmos Media Downloader."
+            content.body = "\(done) ready" + (failed > 0 ? ", \(failed) failed" : "") + ". Click to open CosmoGrav."
             content.sound = .default
             center.add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
         }

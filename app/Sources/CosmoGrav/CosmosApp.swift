@@ -7,12 +7,12 @@ enum Entry {
         if CommandLine.arguments.contains("--selftest") {
             SelfTest.run(Array(CommandLine.arguments.drop(while: { $0 != "--selftest" }).dropFirst()))
         } else {
-            CosmosMediaDownloaderApp.main()
+            CosmoGravApp.main()
         }
     }
 }
 
-struct CosmosMediaDownloaderApp: App {
+struct CosmoGravApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var settings: AppSettings
     @StateObject private var queue: QueueManager
@@ -28,7 +28,7 @@ struct CosmosMediaDownloaderApp: App {
     }
 
     var body: some Scene {
-        Window("Cosmos Media Downloader", id: "main") {
+        Window("CosmoGrav", id: "main") {
             ContentView()
                 .environmentObject(settings)
                 .environmentObject(queue)
@@ -39,7 +39,7 @@ struct CosmosMediaDownloaderApp: App {
         .defaultSize(width: 920, height: 680)
         .commands {
             CommandGroup(replacing: .appInfo) {
-                AboutButton(title: "About Cosmos Media Downloader", ghost: false)
+                AboutButton(title: "About CosmoGrav", ghost: false)
             }
             CommandGroup(replacing: .newItem) {}
             CommandGroup(replacing: .help) {
@@ -47,7 +47,7 @@ struct CosmosMediaDownloaderApp: App {
             }
         }
 
-        Window("About Cosmos Media Downloader", id: "about") {
+        Window("About CosmoGrav", id: "about") {
             AboutView()
         }
         .windowStyle(.hiddenTitleBar)

@@ -56,7 +56,7 @@ final class Updater: ObservableObject {
     func installUpdate() {
         updating = true
         QueueManager.shared?.stopEverything()
-        let script = "sleep 1; curl -fsSL \(Tools.repoRaw)/install.sh | /bin/bash -s -- --update > \"$HOME/Library/Logs/CosmosMediaDownloader-update.log\" 2>&1"
+        let script = "sleep 1; curl -fsSL \(Tools.repoRaw)/install.sh | /bin/bash -s -- --update > \"$HOME/Library/Logs/CosmoGrav-update.log\" 2>&1"
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/bash")
         process.arguments = ["-c", script]

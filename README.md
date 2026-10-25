@@ -1,4 +1,6 @@
-# Cosmos Media Downloader (Mac)
+# CosmoGrav (Mac)
+
+_Formerly Cosmos Media Downloader._
 
 <img src="assets/icon.png" width="96" align="right">
 
@@ -48,7 +50,7 @@ Everything runs on your Mac. No accounts, no tracking, nothing is sent to Creati
 
 ## Uninstall
 
-Drag **Cosmos Media Downloader** from Applications to the Trash, then delete `~/Library/Application Support/TeamYTDownloader` (in Finder: Cmd + Shift + G, paste the path).
+Drag **CosmoGrav** from Applications to the Trash, then delete `~/Library/Application Support/TeamYTDownloader` (in Finder: Cmd + Shift + G, paste the path).
 
 ## For maintainers
 

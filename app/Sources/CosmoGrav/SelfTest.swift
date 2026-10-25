@@ -1,6 +1,6 @@
 import Foundation
 
-/// Headless check used by the build machine: `CosmosMediaDownloader --selftest QUALITY:START-END:URL ...`
+/// Headless check used by the build machine: `CosmoGrav --selftest QUALITY:START-END:URL ...`
 /// (START-END may be empty). Downloads and converts each link, then prints the codecs of the result.
 enum SelfTest {
     static func run(_ specs: [String]) -> Never {
