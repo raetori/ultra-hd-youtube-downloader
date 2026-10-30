@@ -61,6 +61,12 @@ final class QueueManager: ObservableObject {
     @Published var toolsMissing = !Tools.installed
     /// Links found on the clipboard when the app comes to the front, offered with one click.
     @Published var clipboardLinks: [String] = []
+    /// An imported list waiting in the Import window (pasted, opened or dropped).
+    @Published var importDraft: ImportDraft?
+    /// Batches from an imported list that haven't been added to the queue yet.
+    @Published var pendingBatches: [LinkBatch] = []
+    /// Add the next batch on its own once the current one has finished.
+    @Published var autoContinue = false
     private var lastPasteboardChange = NSPasteboard.general.changeCount
 
     let settings: AppSettings
@@ -96,14 +102,57 @@ final class QueueManager: ObservableObject {
         return links.count
     }
 
-    func add(urls: [(url: String, title: String?)]) {
+    func add(urls: [(url: String, title: String?)], folder: [String] = [], autoStart: Bool = false) {
         toolsMissing = !Tools.installed
         for entry in urls {
             if items.contains(where: { $0.url == entry.url && $0.state != .done }) { continue }
             let item = DownloadItem(url: entry.url, quality: settings.defaultQuality, title: entry.title)
+            item.folder = folder
+            item.autoStart = autoStart
             items.append(item)
             fetchInfo(item)
         }
+    }
+
+    // MARK: Imported lists
+
+    func openImport(text: String = "", name: String = "Pasted links") {
+        importDraft = ImportDraft(text: text, name: name)
+    }
+
+    /// Adds the first batch now. The rest wait under "Up next", and follow on their own when `auto` is on.
+    func importBatches(_ batches: [LinkBatch], auto: Bool) {
+        guard let first = batches.first else { return }
+        autoContinue = auto
+        pendingBatches = Array(batches.dropFirst())
+        add(batch: first)
+    }
+
+    func addNextBatch() {
+        guard !pendingBatches.isEmpty else { return }
+        add(batch: pendingBatches.removeFirst())
+    }
+
+    func setAutoContinue(_ on: Bool) {
+        autoContinue = on
+        continueBatchesIfIdle()
+    }
+
+    func clearPendingBatches() {
+        pendingBatches = []
+        autoContinue = false
+    }
+
+    private func add(batch: LinkBatch) {
+        add(urls: batch.links.map { (url: $0.url, title: String?.none) }, folder: batch.folder, autoStart: autoContinue)
+        if autoContinue { startAll() }
+    }
+
+    /// In auto mode, moves on to the next batch once nothing from the current one is loading or downloading.
+    private func continueBatchesIfIdle() {
+        guard autoContinue, !pendingBatches.isEmpty else { return }
+        let busy = items.contains { $0.state == .fetching || $0.state == .queued || $0.state.isActive || ($0.autoStart && $0.state == .ready) }
+        if !busy { addNextBatch() }
     }
 
     func fetchInfo(_ item: DownloadItem) {
@@ -119,7 +168,7 @@ final class QueueManager: ObservableObject {
                 if let entries = info.entries {
                     // A playlist link becomes one row per video.
                     items.removeAll { $0.id == item.id }
-                    add(urls: entries)
+                    add(urls: entries, folder: item.folder, autoStart: item.autoStart)
                     return
                 }
                 item.title = info.title
@@ -132,6 +181,7 @@ final class QueueManager: ObservableObject {
                 item.infoLoaded = true
                 item.needsLogin = false
                 if item.state == .fetching { item.state = .ready; item.detail = "Ready" }
+                if item.autoStart { start(item) }
             } catch {
                 let err = error as? PipelineError
                 item.state = .failed
@@ -139,6 +189,7 @@ final class QueueManager: ObservableObject {
                 item.needsLogin = err?.needsLogin ?? false
                 item.detail = "Couldn't load this link"
                 if item.site.isEmpty { item.site = Self.siteName("", url: url) }
+                continueBatchesIfIdle()
             }
         }
     }
@@ -181,6 +232,7 @@ final class QueueManager: ObservableObject {
         case .queued:
             item.state = .ready
             item.detail = "Ready"
+            item.autoStart = false
         case .downloading, .converting:
             item.runner?.cancel()
             item.detail = "Stopping…"
@@ -190,12 +242,14 @@ final class QueueManager: ObservableObject {
     }
 
     func cancelAll() {
+        autoContinue = false
         for item in items where item.state == .queued || item.state.isActive { cancel(item) }
     }
 
     func remove(_ item: DownloadItem) {
         if item.state.isActive { item.runner?.cancel() }
         items.removeAll { $0.id == item.id }
+        continueBatchesIfIdle()
     }
 
     func clearFinished() {
@@ -222,7 +276,7 @@ final class QueueManager: ObservableObject {
         let url = item.url, quality = item.quality, parts = item.expectedParts
         let useLogin = item.useLogin, browser = settings.loginBrowser
         let trimStart = item.trimStart, trimEnd = item.trimEnd, duration = item.duration
-        let folder = settings.saveFolder
+        let folder = item.folder.reduce(settings.saveFolder) { $0.appendingPathComponent($1, isDirectory: true) }
         let captions = settings.saveCaptions
         let work = Tools.workRoot.appendingPathComponent(item.id.uuidString)
 
@@ -290,8 +344,9 @@ final class QueueManager: ObservableObject {
             }
             item.runner = nil
             pump()
+            continueBatchesIfIdle()
             updateDockBadge()
-            if activeCount == 0 && waitingCount == 0 && finishedCount > 0 {
+            if activeCount == 0 && waitingCount == 0 && finishedCount > 0 && !(autoContinue && !pendingBatches.isEmpty) {
                 _ = NSApp.requestUserAttention(.informationalRequest)
                 notifyFinished()
             }

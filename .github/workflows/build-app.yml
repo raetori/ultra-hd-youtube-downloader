@@ -22,6 +22,11 @@ jobs:
       - name: Make the .app
         run: bash app/bundle.sh
 
+      - name: Link list import test (no network)
+        run: |
+          mkdir -p dist
+          "dist/CosmoGrav.app/Contents/MacOS/CosmoGrav" --selftest-import 2>&1 | tee dist/selftest-import.txt
+
       - name: Smoke test (launch the app and take a screenshot)
         continue-on-error: true
         run: |
@@ -39,6 +44,11 @@ jobs:
           open "dist/CosmoGrav.app" --args --about
           sleep 8
           screencapture -x dist/screenshot-about.png
+          pkill -9 -x CosmoGrav || true
+          sleep 2
+          open "dist/CosmoGrav.app" --args --import-demo
+          sleep 8
+          screencapture -x dist/screenshot-import.png
           pkill -9 -x CosmoGrav || true
 
       - name: End-to-end test (real downloads with the Mac's own encoder)
@@ -75,6 +85,8 @@ jobs:
           gh release upload ci-preview dist/screenshot.png --clobber
           [ -f dist/screenshot-demo.png ] && gh release upload ci-preview dist/screenshot-demo.png --clobber
           [ -f dist/screenshot-about.png ] && gh release upload ci-preview dist/screenshot-about.png --clobber
+          [ -f dist/screenshot-import.png ] && gh release upload ci-preview dist/screenshot-import.png --clobber
+          [ -f dist/selftest-import.txt ] && gh release upload ci-preview dist/selftest-import.txt --clobber
           [ -f dist/selftest.txt ] && gh release upload ci-preview dist/selftest.txt --clobber
 
       - name: Publish release
