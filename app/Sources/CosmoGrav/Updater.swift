@@ -6,6 +6,8 @@ import Foundation
 final class Updater: ObservableObject {
     @Published var availableVersion: String?
     @Published var updating = false
+    /// Release tag of the available version (e.g. "v1.2.3"); the update installs exactly that release.
+    private var availableTag: String?
 
     static var currentVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
@@ -37,8 +39,13 @@ final class Updater: ObservableObject {
             guard let response = try? await URLSession.shared.data(for: request),
                   let json = try? JSONSerialization.jsonObject(with: response.0) as? [String: Any],
                   let tag = json["tag_name"] as? String else { return }
-            let latest = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
-            if Self.isNewer(latest, than: Self.currentVersion) { availableVersion = latest }
+            // The tag ends up in a shell command, so accept only the "v1.2.3" shape.
+            guard tag.range(of: #"^v[0-9]+(\.[0-9]+)*$"#, options: .regularExpression) != nil else { return }
+            let latest = String(tag.dropFirst())
+            if Self.isNewer(latest, than: Self.currentVersion) {
+                availableTag = tag
+                availableVersion = latest
+            }
         }
     }
 
@@ -52,11 +59,13 @@ final class Updater: ObservableObject {
         return false
     }
 
-    /// Runs the installer in the background, quits, and the installer reopens the new version.
+    /// Runs the installer from the published release (not the latest code on main), quits,
+    /// and the installer reopens the new version. The installer checks the download's SHA-256.
     func installUpdate() {
+        guard let tag = availableTag else { return }
         updating = true
         QueueManager.shared?.stopEverything()
-        let script = "sleep 1; curl -fsSL \(Tools.repoRaw)/install.sh | /bin/bash -s -- --update > \"$HOME/Library/Logs/CosmoGrav-update.log\" 2>&1"
+        let script = "sleep 1; curl -fsSL \(Tools.repoRawBase)/\(tag)/install.sh | COSMOGRAV_TAG=\(tag) /bin/bash -s -- --update > \"$HOME/Library/Logs/CosmoGrav-update.log\" 2>&1"
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/bash")
         process.arguments = ["-c", script]

@@ -130,10 +130,24 @@
       } catch { Fail "couldn't reach GitHub to find the latest version. Check your internet connection." }
       $release = $releases | Where-Object { $_.tag_name -like 'win-v*' -and -not $_.draft -and -not $_.prerelease } |
         Sort-Object { [version]($_.tag_name.Substring(5)) } -Descending | Select-Object -First 1
+      # The app's "Update now" button passes the exact release it found, so the update installs that release.
+      if ($env:COSMOGRAV_TAG -match '^win-v[0-9]+(\.[0-9]+)*$') {
+        $pinned = $releases | Where-Object { $_.tag_name -eq $env:COSMOGRAV_TAG -and -not $_.draft } | Select-Object -First 1
+        if ($pinned) { $release = $pinned }
+      }
       if (-not $release) { Fail 'no Windows version has been published yet.' }
       $version = $release.tag_name.Substring(5)
       if (-not (Get-File "https://github.com/$Repo/releases/download/$($release.tag_name)/CosmoGrav-Windows.zip" $appZip)) {
         Fail "couldn't download the app. Check your internet connection."
+      }
+      # Releases publish a SHA-256 next to the app; refuse a download that doesn't match it.
+      $sumFile = Join-Path $Tmp 'app.sha256'
+      if (Get-File "https://github.com/$Repo/releases/download/$($release.tag_name)/CosmoGrav-Windows.zip.sha256" $sumFile) {
+        $want = ((Get-Content -Raw $sumFile).Trim() -split '\s+')[0]
+        $got = (Get-FileHash -Algorithm SHA256 $appZip).Hash
+        if (-not $want -or $want -ne $got) { Fail "the app download didn't match its published checksum. Run the installer again." }
+      } else {
+        Write-Host "Note: this release has no checksum file, so the download wasn't verified."
       }
     }
     $newApp = Join-Path $Tmp 'app'

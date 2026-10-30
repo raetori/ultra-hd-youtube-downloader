@@ -13,7 +13,8 @@ enum Tools {
     static var ffprobe: URL { bin.appendingPathComponent("ffprobe") }
     static var deno: URL { bin.appendingPathComponent("deno") }
 
-    static let repoRaw = "https://raw.githubusercontent.com/raetori/ultra-hd-youtube-downloader/main"
+    static let repoRawBase = "https://raw.githubusercontent.com/raetori/ultra-hd-youtube-downloader"
+    static let repoRaw = repoRawBase + "/main"
     static let installCommand = "/bin/bash -c \"$(curl -fsSL \(repoRaw)/install.sh)\""
     static let website = URL(string: "https://www.creationofcosmos.com")!
 

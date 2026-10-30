@@ -23,7 +23,8 @@ namespace CosmoGrav
         public static string Ffprobe => Path.Combine(Bin, "ffprobe.exe");
         public static string Deno => Path.Combine(Bin, "deno.exe");
 
-        public const string RepoRaw = "https://raw.githubusercontent.com/raetori/ultra-hd-youtube-downloader/main";
+        public const string RepoRawBase = "https://raw.githubusercontent.com/raetori/ultra-hd-youtube-downloader";
+        public const string RepoRaw = RepoRawBase + "/main";
         public const string InstallCommand = "irm " + RepoRaw + "/install.ps1 | iex";
         public const string Website = "https://www.creationofcosmos.com";
 
