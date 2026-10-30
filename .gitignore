@@ -1,0 +1,11 @@
+
+# Secrets and local deploy state: never commit these
+.env
+.env.*
+!.env.example
+.vercel
+*.pem
+*.key
+*.p12
+.DS_Store
+._*
