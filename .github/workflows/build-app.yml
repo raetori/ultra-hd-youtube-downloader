@@ -84,10 +84,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION=$(cat app/VERSION)
+          (cd dist && shasum -a 256 CosmoGrav.zip > CosmoGrav.zip.sha256)
           if gh release view "v$VERSION" >/dev/null 2>&1; then
-            gh release upload "v$VERSION" dist/CosmoGrav.zip --clobber
+            gh release upload "v$VERSION" dist/CosmoGrav.zip dist/CosmoGrav.zip.sha256 --clobber
           else
-            gh release create "v$VERSION" dist/CosmoGrav.zip \
+            gh release create "v$VERSION" dist/CosmoGrav.zip dist/CosmoGrav.zip.sha256 \
               --title "CosmoGrav $VERSION" \
               --notes "Install or update with the one-line command in the README." \
               --latest

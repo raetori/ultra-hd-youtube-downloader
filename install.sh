@@ -6,6 +6,10 @@
 set -u
 APP_NAME="CosmoGrav"
 RELEASES="https://github.com/raetori/ultra-hd-youtube-downloader/releases/latest/download"
+# The app's "Update now" button passes the exact release it found, so the update installs that release.
+case "${COSMOGRAV_TAG:-}" in
+  v[0-9]*) [[ "$COSMOGRAV_TAG" =~ ^v[0-9]+(\.[0-9]+)*$ ]] && RELEASES="https://github.com/raetori/ultra-hd-youtube-downloader/releases/download/$COSMOGRAV_TAG" ;;
+esac
 BASE="$HOME/Library/Application Support/TeamYTDownloader"
 BIN="$BASE/bin"
 TMP="$(mktemp -d)"
@@ -80,8 +84,18 @@ fi
 
 say "4/4  Installing the app..."
 # Older releases used the app's former name, so accept either.
-fetch "$RELEASES/CosmoGrav.zip" "$TMP/app.zip" || fetch "$RELEASES/CosmosMediaDownloader.zip" "$TMP/app.zip" \
-  || fail "couldn't download the app. Check your internet connection."
+if fetch "$RELEASES/CosmoGrav.zip" "$TMP/app.zip"; then
+  # Releases publish a SHA-256 next to the app; refuse a download that doesn't match it.
+  if curl -fsL --retry 3 --connect-timeout 20 -o "$TMP/app.sha256" "$RELEASES/CosmoGrav.zip.sha256"; then
+    want=$(awk '{print tolower($1)}' "$TMP/app.sha256")
+    got=$(shasum -a 256 "$TMP/app.zip" | awk '{print $1}')
+    [ -n "$want" ] && [ "$want" = "$got" ] || fail "the app download didn't match its published checksum. Run the installer again."
+  else
+    echo "Note: this release has no checksum file, so the download wasn't verified."
+  fi
+else
+  fetch "$RELEASES/CosmosMediaDownloader.zip" "$TMP/app.zip" || fail "couldn't download the app. Check your internet connection."
+fi
 ditto -x -k "$TMP/app.zip" "$TMP/app" || fail "the app download was damaged. Run the installer again."
 NEW_APP=$(find "$TMP/app" -maxdepth 1 -name "*.app" | head -1)
 [ -n "$NEW_APP" ] || fail "the app download was incomplete. Run the installer again."

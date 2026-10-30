@@ -52,7 +52,9 @@ namespace CosmoGrav
         {
             lastCheck = DateTime.Now;
             var latest = await LatestVersion();
-            if (latest != null && IsNewer(latest, CurrentVersion)) AvailableVersion = latest;
+            // The version ends up in a PowerShell command, so accept only the "1.2.3" shape.
+            if (latest != null && System.Text.RegularExpressions.Regex.IsMatch(latest, @"^[0-9]+(\.[0-9]+)*$") && IsNewer(latest, CurrentVersion))
+                AvailableVersion = latest;
         }
 
         public static async Task<string> LatestVersion()
@@ -98,14 +100,17 @@ namespace CosmoGrav
             return false;
         }
 
-        /// Runs the installer in the background, closes the app, and the installer reopens the new version.
+        /// Runs the installer from the published release (not the latest code on main), closes the app,
+        /// and the installer reopens the new version. The installer checks the download's SHA-256.
         public void InstallUpdate()
         {
+            if (AvailableVersion == null) return;
             Updating = true;
             QueueManager.Shared?.StopEverything();
+            var tag = "win-v" + AvailableVersion;
             var log = Path.Combine(Tools.Base, "update.log").Replace("'", "''");
-            var command = "$ProgressPreference='SilentlyContinue'; Start-Sleep -Seconds 1; $env:COSMOGRAV_UPDATE='1'; " +
-                          $"& {{ irm '{Tools.RepoRaw}/install.ps1' | iex }} *>&1 | Out-File -FilePath '{log}' -Encoding utf8";
+            var command = $"$ProgressPreference='SilentlyContinue'; Start-Sleep -Seconds 1; $env:COSMOGRAV_UPDATE='1'; $env:COSMOGRAV_TAG='{tag}'; " +
+                          $"& {{ irm '{Tools.RepoRawBase}/{tag}/install.ps1' | iex }} *>&1 | Out-File -FilePath '{log}' -Encoding utf8";
             try
             {
                 Process.Start(new ProcessStartInfo("powershell.exe",

@@ -134,10 +134,11 @@ jobs:
         run: |
           VERSION=$(tr -d '\r\n ' < windows/VERSION)
           TAG="win-v$VERSION"
+          (cd dist && sha256sum CosmoGrav-Windows.zip > CosmoGrav-Windows.zip.sha256)
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" dist/CosmoGrav-Windows.zip --clobber
+            gh release upload "$TAG" dist/CosmoGrav-Windows.zip dist/CosmoGrav-Windows.zip.sha256 --clobber
           else
-            gh release create "$TAG" dist/CosmoGrav-Windows.zip \
+            gh release create "$TAG" dist/CosmoGrav-Windows.zip dist/CosmoGrav-Windows.zip.sha256 \
               --title "CosmoGrav for Windows $VERSION" \
               --notes "Install or update with the one-line PowerShell command in the README." \
               --latest=false
