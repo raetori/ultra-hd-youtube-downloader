@@ -102,11 +102,11 @@ final class QueueManager: ObservableObject {
         return links.count
     }
 
-    func add(urls: [(url: String, title: String?)], folder: [String] = [], autoStart: Bool = false) {
+    func add(urls: [(url: String, title: String?)], folder: [String] = [], autoStart: Bool = false, quality: Quality? = nil) {
         toolsMissing = !Tools.installed
         for entry in urls {
             if items.contains(where: { $0.url == entry.url && $0.state != .done }) { continue }
-            let item = DownloadItem(url: entry.url, quality: settings.defaultQuality, title: entry.title)
+            let item = DownloadItem(url: entry.url, quality: quality ?? settings.defaultQuality, title: entry.title)
             item.folder = folder
             item.autoStart = autoStart
             items.append(item)
@@ -121,7 +121,12 @@ final class QueueManager: ObservableObject {
     }
 
     /// Adds the first batch now. The rest wait under "Up next", and follow on their own when `auto` is on.
-    func importBatches(_ batches: [LinkBatch], auto: Bool) {
+    func importBatches(_ list: [LinkBatch], auto: Bool, quality: Quality) {
+        let batches = list.map { batch -> LinkBatch in
+            var batch = batch
+            batch.quality = quality
+            return batch
+        }
         guard let first = batches.first else { return }
         autoContinue = auto
         pendingBatches = Array(batches.dropFirst())
@@ -144,7 +149,8 @@ final class QueueManager: ObservableObject {
     }
 
     private func add(batch: LinkBatch) {
-        add(urls: batch.links.map { (url: $0.url, title: String?.none) }, folder: batch.folder, autoStart: autoContinue)
+        add(urls: batch.links.map { (url: $0.url, title: String?.none) }, folder: batch.folder, autoStart: autoContinue,
+            quality: batch.quality)
         if autoContinue { startAll() }
     }
 
@@ -168,7 +174,7 @@ final class QueueManager: ObservableObject {
                 if let entries = info.entries {
                     // A playlist link becomes one row per video.
                     items.removeAll { $0.id == item.id }
-                    add(urls: entries, folder: item.folder, autoStart: item.autoStart)
+                    add(urls: entries, folder: item.folder, autoStart: item.autoStart, quality: item.quality)
                     return
                 }
                 item.title = info.title
@@ -176,7 +182,7 @@ final class QueueManager: ObservableObject {
                 item.site = Self.siteName(info.site, url: url)
                 item.thumbnail = info.thumbnail
                 item.duration = info.duration
-                item.resolution = item.quality.isAudio ? nil : Pipeline.resolutionLabel(height: info.height)
+                item.resolution = item.quality.isAudio || !item.quality.hasMedia ? nil : Pipeline.resolutionLabel(height: info.height)
                 item.expectedParts = info.parts
                 item.infoLoaded = true
                 item.needsLogin = false
@@ -294,42 +300,65 @@ final class QueueManager: ObservableObject {
                 try FileManager.default.createDirectory(at: work, withIntermediateDirectories: true)
                 defer { try? FileManager.default.removeItem(at: work) }
 
-                let temp = work.appendingPathComponent("final." + quality.fileExtension)
-                var done = false
-                if trimStart != nil || trimEnd != nil {
-                    done = try await Pipeline.downloadSection(url: url, quality: quality, trimStart: trimStart, trimEnd: trimEnd,
-                                                              duration: duration, useLogin: useLogin, browser: browser,
-                                                              output: temp, handle: handle, onProgress: report)
-                }
-                if !done {
-                    let downloaded = try await Pipeline.download(url: url, quality: quality, expectedParts: parts,
-                                                                 useLogin: useLogin, browser: browser,
-                                                                 workDir: work, handle: handle, onProgress: report)
-                    item.state = .converting
-                    item.progress = 0
-                    try await Pipeline.finalize(input: downloaded, quality: quality, trimStart: trimStart, trimEnd: trimEnd,
-                                                output: temp, handle: handle, onProgress: report)
-                }
-
-                try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-                let name = item.fileName.isEmpty ? item.title : item.fileName
-                let destination = FileNames.unique(in: folder, name: name, ext: quality.fileExtension)
-                try FileManager.default.moveItem(at: temp, to: destination)
-
-                var savedNote = "Saved to \(folder.lastPathComponent)"
-                if captions {
+                if !quality.hasMedia {
+                    // Captions only: no video is downloaded.
                     item.detail = "Saving captions…"
-                    let srt = await Pipeline.saveCaptions(url: url, useLogin: useLogin, browser: browser, workDir: work,
-                                                          trimStart: trimStart, trimEnd: trimEnd,
-                                                          baseName: destination.deletingPathExtension())
-                    savedNote += srt.isEmpty ? " · no captions available" : " · with captions"
-                }
+                    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                    let name = item.fileName.isEmpty ? item.title : item.fileName
+                    // "Name.en.srt", or "Name (2).en.srt" when that already exists.
+                    let base = FileNames.unique(in: folder, name: name, ext: "en.srt").deletingPathExtension().deletingPathExtension()
+                    var files = await Pipeline.saveCaptions(url: url, useLogin: useLogin, browser: browser, workDir: work,
+                                                            trimStart: trimStart, trimEnd: trimEnd, baseName: base)
+                    if files.isEmpty {
+                        // No English: take the captions in the video's own language instead.
+                        files = await Pipeline.saveCaptions(url: url, useLogin: useLogin, browser: browser, workDir: work,
+                                                            trimStart: trimStart, trimEnd: trimEnd, baseName: base,
+                                                            languages: ".*-orig,all,-live_chat")
+                    }
+                    guard let first = files.first else { throw PipelineError(message: "This video has no captions to save.") }
+                    item.outputURL = first
+                    item.state = .done
+                    item.progress = 1
+                    item.detail = "Saved \(files.count == 1 ? "captions" : "\(files.count) caption files") to \(folder.lastPathComponent)"
+                    addHistory(item, file: first)
+                } else {
+                    let temp = work.appendingPathComponent("final." + quality.fileExtension)
+                    var done = false
+                    if trimStart != nil || trimEnd != nil {
+                        done = try await Pipeline.downloadSection(url: url, quality: quality, trimStart: trimStart, trimEnd: trimEnd,
+                                                                  duration: duration, useLogin: useLogin, browser: browser,
+                                                                  output: temp, handle: handle, onProgress: report)
+                    }
+                    if !done {
+                        let downloaded = try await Pipeline.download(url: url, quality: quality, expectedParts: parts,
+                                                                     useLogin: useLogin, browser: browser,
+                                                                     workDir: work, handle: handle, onProgress: report)
+                        item.state = .converting
+                        item.progress = 0
+                        try await Pipeline.finalize(input: downloaded, quality: quality, trimStart: trimStart, trimEnd: trimEnd,
+                                                    output: temp, handle: handle, onProgress: report)
+                    }
 
-                item.outputURL = destination
-                item.state = .done
-                item.progress = 1
-                item.detail = savedNote
-                addHistory(item, file: destination)
+                    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                    let name = item.fileName.isEmpty ? item.title : item.fileName
+                    let destination = FileNames.unique(in: folder, name: name, ext: quality.fileExtension)
+                    try FileManager.default.moveItem(at: temp, to: destination)
+
+                    var savedNote = "Saved to \(folder.lastPathComponent)"
+                    if captions {
+                        item.detail = "Saving captions…"
+                        let srt = await Pipeline.saveCaptions(url: url, useLogin: useLogin, browser: browser, workDir: work,
+                                                              trimStart: trimStart, trimEnd: trimEnd,
+                                                              baseName: destination.deletingPathExtension())
+                        savedNote += srt.isEmpty ? " · no captions available" : " · with captions"
+                    }
+
+                    item.outputURL = destination
+                    item.state = .done
+                    item.progress = 1
+                    item.detail = savedNote
+                    addHistory(item, file: destination)
+                }
             } catch {
                 if handle.cancelled || error is CancellationError {
                     item.state = .cancelled

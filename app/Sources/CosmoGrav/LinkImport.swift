@@ -51,6 +51,8 @@ struct LinkBatch: Identifiable {
     let title: String
     let links: [ImportedLink]
     let folder: [String]
+    /// Set when the list is imported; nil means the app's default quality.
+    var quality: Quality?
 }
 
 enum FolderMode: String, CaseIterable, Identifiable {

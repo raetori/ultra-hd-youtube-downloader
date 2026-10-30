@@ -134,7 +134,7 @@ struct ItemRow: View {
             .disabled(!item.state.canEdit)
             .popover(isPresented: $showTrim, arrowEdge: .bottom) { TrimEditor(item: item) }
 
-            if let resolution = item.resolution, !item.quality.isAudio {
+            if let resolution = item.resolution, !item.quality.isAudio, item.quality.hasMedia {
                 Chip(text: item.quality == .hd1080 && ["4K", "8K", "1440p"].contains(resolution) ? "1080p" : resolution, tint: Theme.accent)
             }
             if let badge = item.quality.outputBadge { Chip(text: badge, symbol: "checkmark.seal", tint: Theme.textDim) }

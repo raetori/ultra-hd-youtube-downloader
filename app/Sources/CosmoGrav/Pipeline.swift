@@ -302,7 +302,7 @@ enum Pipeline {
         let label: String
 
         switch quality {
-        case .mp3, .wav:
+        case .mp3, .wav, .captions:
             video = ["-vn"]
             audio = quality == .mp3 ? ["-c:a", "libmp3lame", "-q:a", "0"] : ["-c:a", "pcm_s24le", "-ar", "48000"]
             container = []
@@ -383,7 +383,7 @@ enum Pipeline {
         switch quality {
         case .prores: return ["-c:a", "pcm_s16le", "-ar", "48000"]
         case .mp3: return ["-c:a", "libmp3lame", "-q:a", "0"]
-        case .wav: return ["-c:a", "pcm_s24le", "-ar", "48000"]
+        case .wav, .captions: return ["-c:a", "pcm_s24le", "-ar", "48000"]
         case .best, .hd1080: return ["-c:a", "aac", "-b:a", "320k", "-ar", "48000"]
         }
     }
@@ -391,7 +391,7 @@ enum Pipeline {
     private static func containerArgs(_ quality: Quality) -> [String] {
         switch quality {
         case .best, .hd1080: return ["-tag:v", "avc1", "-movflags", "+faststart"]
-        case .prores, .mp3, .wav: return []
+        case .prores, .mp3, .wav, .captions: return []
         }
     }
 
@@ -400,11 +400,12 @@ enum Pipeline {
     /// Saves the video's captions (or YouTube's automatic ones) as .srt next to the video, cut to match a trim.
     /// Returns the saved files; captions are a bonus, so failures just mean none were saved.
     static func saveCaptions(url: String, useLogin: Bool, browser: String, workDir: URL,
-                             trimStart: Double?, trimEnd: Double?, baseName: URL) async -> [URL] {
+                             trimStart: Double?, trimEnd: Double?, baseName: URL,
+                             languages: String = "en.*,en") async -> [URL] {
         let dir = workDir.appendingPathComponent("captions")
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let args = commonArgs(useLogin: useLogin, browser: browser)
-            + ["--skip-download", "--write-subs", "--write-auto-subs", "--sub-langs", "en.*,en",
+            + ["--skip-download", "--write-subs", "--write-auto-subs", "--sub-langs", languages,
                "--convert-subs", "srt", "-P", dir.path, "-o", "captions.%(ext)s", "--", url]
         guard let result = try? await Runner.run(Tools.ytdlp, args), result.status == 0 else { return [] }
         let files = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
