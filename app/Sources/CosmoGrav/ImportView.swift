@@ -21,6 +21,7 @@ struct ImportView: View {
     @State private var batchSize = 25
     @State private var folders: FolderMode = .perType
     @State private var auto = true
+    @State private var quality = UserDefaults.standard.string(forKey: "defaultQuality").flatMap(Quality.init(rawValue:)) ?? .best
     @State private var skipDownloaded = true
     @State private var showProblems = false
     @State private var message: String?
@@ -194,6 +195,17 @@ struct ImportView: View {
                         .help("The folder made inside your save folder")
                 }
             }
+            HStack(spacing: 10) {
+                Text("Download as").font(.system(size: 12))
+                Picker("", selection: $quality) {
+                    ForEach(Quality.allCases) { Text($0.label).tag($0) }
+                }
+                .labelsHidden()
+                .frame(width: 220)
+                if !quality.hasMedia {
+                    Text("Only the .srt captions are saved, no video.").font(.system(size: 11)).foregroundStyle(Theme.textDim)
+                }
+            }
             Toggle("Download on its own, one batch after another", isOn: $auto).toggleStyle(.checkbox).font(.system(size: 12))
                 .help("Each batch starts once the one before it has finished. Turn off to add batches yourself.")
         }
@@ -230,7 +242,7 @@ struct ImportView: View {
             Spacer()
             Button("Cancel") { dismiss() }.buttonStyle(GhostButtonStyle()).keyboardShortcut(.cancelAction)
             Button {
-                queue.importBatches(batches, auto: auto)
+                queue.importBatches(batches, auto: auto, quality: quality)
                 dismiss()
             } label: {
                 Text(addTitle)

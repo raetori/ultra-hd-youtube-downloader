@@ -44,11 +44,11 @@ When a new version is out, CosmoGrav shows an **Update now** button at the top. 
 2. For each video you can:
    - **Rename** the file (click the name)
    - **Trim** to a start and end time, like `1:30`
-   - Pick the **quality**: Best HD (up to 4K), HD 1080p (faster), ProRes 422 HQ (.mov, for heavy editing and grading), Audio MP3 or Audio WAV
+   - Pick the **quality**: Best HD (up to 4K), HD 1080p (faster), ProRes 422 HQ (.mov, for heavy editing and grading), Audio MP3, Audio WAV, or **Captions only (SRT)** (Mac), which saves just the subtitles and no video
 3. Click **Download**. Two videos download at a time by default (choose 1, 2 or 3 with **At once**). Cancel any video with its ✕ button.
 4. Pick where files go with **Save to**. Click the folder button on a finished video to see it in File Explorer (Windows) or Finder (Mac).
 5. Copied a link in your browser? Switch to the app and it offers to add it.
-6. Got a long list (dozens or hundreds of links)? Click **Import list** (⌘O) on Mac, then open a `.txt` or `.csv` file or paste the list. You can also drop the file on the window, and a paste of more than 20 links opens the same screen. CosmoGrav removes repeats, lists any lines it skipped, keeps videos, Shorts and playlists apart, and divides the list into batches of 10, 25, 50 or 100. Each batch can go into its own folder, and batches can download one after another on their own. **Save batches as files** writes each batch to its own `.txt`. The list is read only on your computer and only web links (http/https) are accepted.
+6. Got a long list (dozens or hundreds of links)? Click **Import list** (⌘O) on Mac, then open a `.txt` or `.csv` file or paste the list. You can also drop the file on the window, and a paste of more than 20 links opens the same screen. CosmoGrav removes repeats, lists any lines it skipped, keeps videos, Shorts and playlists apart, and divides the list into batches of 10, 25, 50 or 100. Pick **Download as** to set the quality for the whole list, including Captions only (SRT). Each batch can go into its own folder, and batches can download one after another on their own. **Save batches as files** writes each batch to its own `.txt`. The list is read only on your computer and only web links (http/https) are accepted.
 7. In **Settings** you can also save captions (.srt) next to each video and get a notification when downloads finish.
 
 Every video comes out as H.264 + AAC MP4. If the site's file is already H.264 it is kept as is (instant). Otherwise it is converted with your computer's built-in video encoder (Apple's on Mac; NVIDIA, Intel or AMD graphics on Windows, or the processor when there is none).

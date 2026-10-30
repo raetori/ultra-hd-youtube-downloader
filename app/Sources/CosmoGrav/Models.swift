@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 
 enum Quality: String, CaseIterable, Identifiable, Codable {
-    case best, hd1080, prores, mp3, wav
+    case best, hd1080, prores, mp3, wav, captions
 
     var id: String { rawValue }
 
@@ -13,6 +13,7 @@ enum Quality: String, CaseIterable, Identifiable, Codable {
         case .prores: return "ProRes 422 HQ (for heavy editing)"
         case .mp3: return "Audio only (MP3)"
         case .wav: return "Audio only (WAV)"
+        case .captions: return "Captions only (SRT)"
         }
     }
 
@@ -23,20 +24,23 @@ enum Quality: String, CaseIterable, Identifiable, Codable {
         case .prores: return "ProRes"
         case .mp3: return "MP3"
         case .wav: return "WAV"
+        case .captions: return "SRT"
         }
     }
 
-    var symbol: String { isAudio ? "waveform" : (self == .prores ? "film.stack" : "film") }
+    var symbol: String { self == .captions ? "captions.bubble" : isAudio ? "waveform" : (self == .prores ? "film.stack" : "film") }
 
     /// What the finished file contains, shown as a badge on each row.
     var outputBadge: String? {
         switch self {
         case .best, .hd1080: return "H.264 MP4"
         case .prores: return "ProRes MOV"
-        case .mp3, .wav: return nil
+        case .mp3, .wav, .captions: return nil
         }
     }
     var isAudio: Bool { self == .mp3 || self == .wav }
+    /// Video or audio, as opposed to captions only.
+    var hasMedia: Bool { self != .captions }
 
     var fileExtension: String {
         switch self {
@@ -44,6 +48,7 @@ enum Quality: String, CaseIterable, Identifiable, Codable {
         case .prores: return "mov"
         case .mp3: return "mp3"
         case .wav: return "wav"
+        case .captions: return "srt"
         }
     }
 
@@ -55,7 +60,7 @@ enum Quality: String, CaseIterable, Identifiable, Codable {
             return "bv*[dynamic_range=SDR]+ba/bv*+ba/b"
         case .hd1080:
             return "bv*[height<=1080][vcodec^=avc1]+ba[acodec^=mp4a]/bv*[height<=1080][dynamic_range=SDR]+ba/bv*[height<=1080]+ba/b[height<=1080]/b"
-        case .mp3, .wav:
+        case .mp3, .wav, .captions:
             return "ba/b"
         }
     }
