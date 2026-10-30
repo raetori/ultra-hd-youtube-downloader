@@ -29,7 +29,9 @@ jobs:
           New-Item -ItemType Directory -Force dist | Out-Null
           $out = "windows/CosmoGrav/bin/Release/net48"
           Compress-Archive -Force -Path "$out/CosmoGrav.exe", "$out/CosmoGrav.exe.config" -DestinationPath dist/CosmoGrav-Windows.zip
-          Get-Item dist/CosmoGrav-Windows.zip | Select-Object Name, Length
+          # The same app as a double-click installer: opened from Downloads it installs itself.
+          Copy-Item "$out/CosmoGrav.exe" dist/CosmoGrav-Setup.exe
+          Get-Item dist/CosmoGrav-Windows.zip, dist/CosmoGrav-Setup.exe | Select-Object Name, Length
 
       # Windows PowerShell 5.1 is what teammates have, and "irm ... | iex" runs the script text the same way.
       - name: Install with the one-line installer
@@ -57,6 +59,26 @@ jobs:
           $log
           if ($log -notmatch 'already set up') { throw 'update mode re-downloaded the tools' }
           if (-not (Test-Path "$env:LOCALAPPDATA\CosmoGrav\app\CosmoGrav.exe")) { throw 'app missing after update' }
+
+      - name: Uninstall, then install again with CosmoGrav-Setup.exe (the download-and-double-click way)
+        shell: pwsh
+        run: |
+          $base = "$env:LOCALAPPDATA\CosmoGrav"
+          powershell -NoProfile -ExecutionPolicy Bypass -File "$base\uninstall.ps1"
+          if (Test-Path $base) { throw 'uninstall left files behind' }
+          if (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\CosmoGrav' -ErrorAction SilentlyContinue) { throw 'uninstall left the Apps entry' }
+          $env:COSMOGRAV_NO_LAUNCH = '1'
+          $log = "$PWD\dist\windows-setup.txt"
+          $p = Start-Process -FilePath dist\CosmoGrav-Setup.exe -ArgumentList '--install', '--log', "`"$log`"" -Wait -PassThru
+          Get-Content $log
+          if ($p.ExitCode -ne 0) { throw "setup failed ($($p.ExitCode))" }
+          foreach ($f in 'app\CosmoGrav.exe', 'bin\yt-dlp.exe', 'bin\ffmpeg.exe', 'bin\ffprobe.exe', 'bin\deno.exe', 'uninstall.ps1') {
+            if (-not (Test-Path "$base\$f")) { throw "missing $f after setup" }
+          }
+          if (-not (Test-Path (Join-Path ([Environment]::GetFolderPath('Desktop')) 'CosmoGrav.lnk'))) { throw 'no desktop shortcut' }
+          $want = (Get-Content windows/VERSION -Raw).Trim()
+          $got = (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\CosmoGrav').DisplayVersion
+          if ($got -ne $want) { throw "Apps entry says version '$got', expected '$want'" }
 
       - name: End-to-end test (real downloads and conversions)
         shell: pwsh
@@ -135,10 +157,16 @@ jobs:
           VERSION=$(tr -d '\r\n ' < windows/VERSION)
           TAG="win-v$VERSION"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" dist/CosmoGrav-Windows.zip --clobber
+            gh release upload "$TAG" dist/CosmoGrav-Windows.zip dist/CosmoGrav-Setup.exe --clobber
           else
-            gh release create "$TAG" dist/CosmoGrav-Windows.zip \
+            gh release create "$TAG" dist/CosmoGrav-Windows.zip dist/CosmoGrav-Setup.exe \
               --title "CosmoGrav for Windows $VERSION" \
-              --notes "Install or update with the one-line PowerShell command in the README." \
+              --notes "Download CosmoGrav-Setup.exe and open it, or use the one-line PowerShell command in the README." \
               --latest=false
           fi
+          # A download link that never changes, for the website:
+          # https://github.com/${{ github.repository }}/releases/download/windows/CosmoGrav-Setup.exe
+          gh release view windows >/dev/null 2>&1 || \
+            gh release create windows --title "CosmoGrav for Windows (download)" --latest=false \
+              --notes "Always the newest CosmoGrav for Windows. Download CosmoGrav-Setup.exe and open it."
+          gh release upload windows dist/CosmoGrav-Setup.exe --clobber

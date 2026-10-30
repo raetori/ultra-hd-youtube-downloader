@@ -5,6 +5,7 @@
 #
 # Set $env:COSMOGRAV_UPDATE = '1' to skip working tools and stay quiet (the app's "Update now" button does this).
 # Set $env:COSMOGRAV_ZIP to a local CosmoGrav-Windows.zip to install that build instead of the latest release (used by CI).
+# CosmoGrav-Setup.exe runs this script hidden with COSMOGRAV_GUI=1 and COSMOGRAV_EXE set to itself, so it installs that file.
 
 & {
   $ProgressPreference = 'SilentlyContinue'
@@ -13,6 +14,7 @@
   $AppName  = 'CosmoGrav'
   $Repo     = 'raetori/ultra-hd-youtube-downloader'
   $Update   = $env:COSMOGRAV_UPDATE -eq '1'
+  $Gui      = $env:COSMOGRAV_GUI -eq '1'
   $Base     = Join-Path $env:LOCALAPPDATA 'CosmoGrav'
   $Bin      = Join-Path $Base 'bin'
   $AppDir   = Join-Path $Base 'app'
@@ -33,7 +35,7 @@
   function Get-File($url, $out) {
     $curl = Join-Path $env:SystemRoot 'System32\curl.exe'
     if (Test-Path $curl) {
-      if ($Update) { & $curl -fsSL --retry 3 --connect-timeout 20 -o $out $url 2>$null }
+      if ($Update -or $Gui) { & $curl -fsSL --retry 3 --connect-timeout 20 -o $out $url 2>$null }
       else { & $curl -fL --retry 3 --connect-timeout 20 --progress-bar -o $out $url }
       if ($LASTEXITCODE -eq 0 -and (Test-Path $out)) { return $true }
     }
@@ -65,7 +67,7 @@
   }
 
   try {
-    if (-not $Update) {
+    if (-not $Update -and -not $Gui) {
       Clear-Host
       Write-Host '=============================================='
       Write-Host '   CosmoGrav setup'
@@ -120,7 +122,14 @@
 
     Say '4/4  Installing the app...'
     $appZip = Join-Path $Tmp 'app.zip'
-    if ($env:COSMOGRAV_ZIP) {
+    $newApp = Join-Path $Tmp 'app'
+    if ($env:COSMOGRAV_EXE) {
+      # Installing from CosmoGrav-Setup.exe: that file is the app.
+      New-Item -ItemType Directory -Force -Path $newApp | Out-Null
+      Copy-Item -Force $env:COSMOGRAV_EXE (Join-Path $newApp 'CosmoGrav.exe')
+      $v = (Get-Item $env:COSMOGRAV_EXE).VersionInfo
+      $version = "$($v.FileMajorPart).$($v.FileMinorPart).$($v.FileBuildPart)"
+    } elseif ($env:COSMOGRAV_ZIP) {
       Copy-Item -Force $env:COSMOGRAV_ZIP $appZip
       $version = 'local build'
     } else {
@@ -136,13 +145,13 @@
         Fail "couldn't download the app. Check your internet connection."
       }
     }
-    $newApp = Join-Path $Tmp 'app'
-    if (-not (Expand-Zip $appZip $newApp)) { Fail 'the app download was damaged. Run the installer again.' }
+    if (-not $env:COSMOGRAV_EXE -and -not (Expand-Zip $appZip $newApp)) { Fail 'the app download was damaged. Run the installer again.' }
     $newExe = Get-ChildItem -Path $newApp -Recurse -Filter 'CosmoGrav.exe' | Select-Object -First 1
     if (-not $newExe) { Fail 'the app download was incomplete. Run the installer again.' }
 
     # Close a running copy, then swap in the new version.
-    Get-Process -Name 'CosmoGrav' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Get-Process -Name 'CosmoGrav' -ErrorAction SilentlyContinue | Where-Object { "$($_.Id)" -ne $env:COSMOGRAV_SETUP_PID } |
+      Stop-Process -Force -ErrorAction SilentlyContinue
     Start-Sleep -Milliseconds 800
     Get-ChildItem -Path $AppDir -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
     Copy-Item -Force -Recurse (Join-Path $newExe.DirectoryName '*') $AppDir
@@ -191,12 +200,14 @@ Start-Sleep -Seconds 3
     Set-ItemProperty -Path $key -Name 'EstimatedSize' -Value $size -Type DWord
 
     Say 'All set!'
-    if (-not $Update) {
+    if (-not $Update -and -not $Gui) {
       Note 'CosmoGrav is in your Start menu and on your desktop.'
       Note 'Tip: right-click its taskbar icon > Pin to taskbar.'
       Note ''
       Note 'Opening it now... You can close this window.'
     }
+    # The app must not inherit the setup's settings (its Update now button runs this script again).
+    Remove-Item Env:COSMOGRAV_EXE, Env:COSMOGRAV_GUI, Env:COSMOGRAV_SETUP_PID -ErrorAction SilentlyContinue
     if ($env:COSMOGRAV_NO_LAUNCH -ne '1') { Start-Process -FilePath $Exe -WorkingDirectory $AppDir }
   } catch {
     if ($_.Exception.Message -ne 'CosmoGrav setup failed') {

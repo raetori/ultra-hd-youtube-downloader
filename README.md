@@ -10,6 +10,14 @@ Download videos from YouTube, TikTok, Instagram, Facebook, Vimeo and more in HD,
 
 ## Install on Windows (once, about 2 minutes)
 
+### Option A: download and double-click
+
+1. Download **[CosmoGrav-Setup.exe](https://github.com/raetori/ultra-hd-youtube-downloader/releases/download/windows/CosmoGrav-Setup.exe)** and open it.
+2. Windows shows a blue box, **"Windows protected your PC"**. This appears for apps from small studios that haven't paid Microsoft for a signing certificate yet. Click **More info**, then **Run anyway**. (If Edge says the file "isn't commonly downloaded", click **…** next to it, then **Keep**, then **Keep anyway**.)
+3. Click **Install CosmoGrav →**. When it says **All set!**, CosmoGrav opens by itself. You can delete the setup file.
+
+### Option B: one line in PowerShell (no warnings at all)
+
 1. Click **Start**, type `PowerShell`, and press **Enter**. A blue window opens.
 2. Copy this line. Click inside the blue window, **right-click** to paste it, and press **Enter**:
 
@@ -19,7 +27,7 @@ irm https://raw.githubusercontent.com/raetori/ultra-hd-youtube-downloader/main/i
 
 3. Wait until it says **All set!**. CosmoGrav opens by itself. You can close the blue window.
 
-CosmoGrav is now in your **Start menu** and on your **desktop**. No admin password and no "Windows protected your PC" warning. Needs Windows 10 or 11 (64-bit).
+Either way, CosmoGrav is now in your **Start menu** and on your **desktop**. No admin password needed. Needs Windows 10 or 11 (64-bit).
 
 ## Install on Mac (once, about 2 minutes)
 
@@ -63,7 +71,7 @@ Everything runs on your own computer. No accounts, no tracking, nothing is sent 
 ## Troubleshooting
 
 - **A download fails**: check the link and click the retry button. In Settings, **Update now** refreshes the download engine (it also updates itself daily).
-- **Still failing**: run the install line again. It repairs everything.
+- **Still failing**: run the installer again (either option). It repairs everything.
 - **Windows: "irm is not recognized"**: you opened the old Command Prompt (black window). Open **PowerShell** instead (step 1).
 
 ## Uninstall
@@ -74,7 +82,8 @@ Everything runs on your own computer. No accounts, no tracking, nothing is sent 
 ## For maintainers
 
 - `app/` is the Mac app (SwiftUI). Pushing changes to `app/` on `main` makes GitHub build it and publish a release `v…` (`.github/workflows/build-app.yml`).
-- `windows/` is the Windows app (WPF, .NET Framework 4.8, which every Windows 10 and 11 PC has). Pushing changes to `windows/` or `install.ps1` builds it on Windows, installs it with `install.ps1`, runs real downloads, photographs every screen, and on `main` publishes a release `win-v…` (`.github/workflows/build-windows.yml`). Windows releases are never marked "latest", so they don't affect the Mac installer.
+- `windows/` is the Windows app (WPF, .NET Framework 4.8, which every Windows 10 and 11 PC has). Pushing changes to `windows/` or `install.ps1` builds it on Windows, installs it with `install.ps1`, runs real downloads, photographs every screen, and on `main` publishes a release `win-v…` (`.github/workflows/build-windows.yml`). It also refreshes `CosmoGrav-Setup.exe` on the `windows` release, so the download link above never changes. Windows releases are never marked "latest", so they don't affect the Mac installer.
+- `CosmoGrav-Setup.exe` is the app itself: opened from anywhere but its installed folder, it installs itself by running the built-in copy of `install.ps1`.
 - To ship an update to everyone, raise the number in `app/VERSION` (Mac) or `windows/VERSION` (Windows). Apps on a lower version offer **Update now**.
 - `install.sh` (Mac) and `install.ps1` (Windows) install the download tools and the latest release.
 - Screenshots of every Windows screen from the last build are on the [ci-preview](https://github.com/raetori/ultra-hd-youtube-downloader/releases/tag/ci-preview) pre-release (`windows-*.png`).
