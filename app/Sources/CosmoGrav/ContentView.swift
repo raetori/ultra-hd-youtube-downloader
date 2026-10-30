@@ -23,7 +23,7 @@ struct ContentView: View {
         .frame(minWidth: 820, minHeight: 560)
         .background(Theme.ink)
         .preferredColorScheme(.dark)
-        .onDrop(of: [.url, .plainText], isTargeted: $dropTargeted, perform: handleDrop)
+        .onDrop(of: [.fileURL, .url, .plainText], isTargeted: $dropTargeted, perform: handleDrop)
         .overlay {
             if dropTargeted {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -36,6 +36,9 @@ struct ContentView: View {
         }
         .animation(Theme.ease, value: dropTargeted)
         .sheet(isPresented: $showHistory) { HistoryView().preferredColorScheme(.dark) }
+        .sheet(item: $queue.importDraft) { draft in
+            ImportView(draft: draft).environmentObject(queue).preferredColorScheme(.dark)
+        }
         .onAppear {
             updater.startChecking()
             // Used by CI to photograph the About window.
@@ -89,6 +92,12 @@ struct ContentView: View {
                 .padding(.vertical, 10)
                 .background(Capsule().fill(.white.opacity(0.05)))
                 .overlay(Capsule().strokeBorder(.white.opacity(0.12), lineWidth: 0.8))
+
+                Button { queue.openImport() } label: {
+                    Label("Import list", systemImage: "list.bullet.rectangle")
+                }
+                .buttonStyle(GhostButtonStyle())
+                .help("Bring in a long list from a .txt or .csv file, or a big paste, and divide it into batches (⌘O)")
 
                 Button(action: pasteFromClipboard) {
                     Text("Paste links  →")
@@ -178,10 +187,18 @@ struct ContentView: View {
                         .truncationMode(.middle)
                     Spacer()
                     Button("Not now") { queue.clipboardLinks = [] }.buttonStyle(GhostButtonStyle())
+                    if count > Self.importThreshold {
+                        Button("Divide into batches…") {
+                            queue.openImport(text: queue.clipboardLinks.joined(separator: "\n"))
+                            queue.clipboardLinks = []
+                        }
+                        .buttonStyle(GhostButtonStyle())
+                    }
                     Button(count == 1 ? "Add it" : "Add all") { queue.acceptClipboardLinks() }.buttonStyle(PrimaryButtonStyle())
                 }
                 .modifier(BannerShape(tint: Theme.gold))
             }
+            PendingBatchesBanner()
             if let version = updater.availableVersion {
                 Banner(symbol: "sparkles", tint: Theme.gold,
                        text: "Version \(version) is available.",
@@ -192,6 +209,7 @@ struct ContentView: View {
         }
         .padding(.horizontal, 24)
         .animation(Theme.ease, value: queue.clipboardLinks)
+        .animation(Theme.ease, value: queue.pendingBatches.count)
     }
 
     // MARK: Queue
@@ -220,7 +238,7 @@ struct ContentView: View {
                 .font(.system(size: 22, weight: .medium))
                 .tracking(-0.4)
                 .foregroundStyle(.white)
-            Text("Copy one or more links, then click Paste links. You can also drag links here.\nRename, trim and pick the quality for each video before downloading.")
+            Text("Copy one or more links, then click Paste links. You can also drag links here.\nGot a long list? Click Import list, or drop a .txt or .csv file here.")
                 .font(.system(size: 12))
                 .foregroundStyle(Theme.textDim)
                 .multilineTextAlignment(.center)
@@ -287,8 +305,17 @@ struct ContentView: View {
         if count > 0 { linkText = "" }
     }
 
+    /// Pastes with more links than this open the Import window, so a long list can be divided first.
+    static let importThreshold = 20
+
     private func pasteFromClipboard() {
         let text = NSPasteboard.general.string(forType: .string) ?? ""
+        if LinkParser.links(in: text).count > Self.importThreshold {
+            queue.markClipboardSeen()
+            queue.openImport(text: text)
+            addMessage = nil
+            return
+        }
         let count = queue.add(text: text)
         queue.markClipboardSeen()
         addMessage = count == 0 ? "The clipboard doesn't contain any links. Copy a link first." : "Added \(count) link\(count == 1 ? "" : "s")."
@@ -298,15 +325,42 @@ struct ContentView: View {
         for provider in providers {
             if provider.canLoadObject(ofClass: URL.self) {
                 _ = provider.loadObject(ofClass: URL.self) { url, _ in
-                    if let url { Task { @MainActor in queue.add(text: url.absoluteString) } }
+                    guard let url else { return }
+                    Task { @MainActor in
+                        if url.isFileURL {
+                            openDroppedList(url)
+                        } else {
+                            queue.add(text: url.absoluteString)
+                        }
+                    }
                 }
             } else if provider.canLoadObject(ofClass: String.self) {
                 _ = provider.loadObject(ofClass: String.self) { text, _ in
-                    if let text { Task { @MainActor in queue.add(text: text) } }
+                    guard let text else { return }
+                    Task { @MainActor in
+                        if LinkParser.links(in: text).count > Self.importThreshold {
+                            queue.openImport(text: text)
+                        } else {
+                            queue.add(text: text)
+                        }
+                    }
                 }
             }
         }
         return true
+    }
+
+    /// A .txt or .csv dropped on the window opens in the Import window.
+    private func openDroppedList(_ url: URL) {
+        guard LinkImport.fileExtensions.contains(url.pathExtension.lowercased()) else {
+            addMessage = "Drop a .txt or .csv file with links, or the links themselves."
+            return
+        }
+        do {
+            queue.openImport(text: try LinkImport.read(file: url), name: url.deletingPathExtension().lastPathComponent)
+        } catch {
+            addMessage = error.localizedDescription
+        }
     }
 }
 

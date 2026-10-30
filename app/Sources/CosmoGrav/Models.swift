@@ -94,6 +94,10 @@ final class DownloadItem: ObservableObject, Identifiable {
 
     var infoLoaded = false
     var expectedParts = 1
+    /// Subfolders inside the save folder, for imported lists divided into folders.
+    var folder: [String] = []
+    /// Imported in auto mode: starts downloading as soon as its info has loaded.
+    var autoStart = false
     var runner: RunningProcess?
 
     init(url: String, quality: Quality, title: String? = nil) {

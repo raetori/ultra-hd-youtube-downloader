@@ -4,7 +4,9 @@ import SwiftUI
 @main
 enum Entry {
     static func main() {
-        if CommandLine.arguments.contains("--selftest") {
+        if CommandLine.arguments.contains("--selftest-import") {
+            ImportSelfTest.run()
+        } else if CommandLine.arguments.contains("--selftest") {
             SelfTest.run(Array(CommandLine.arguments.drop(while: { $0 != "--selftest" }).dropFirst()))
         } else {
             CosmoGravApp.main()
@@ -24,6 +26,8 @@ struct CosmoGravApp: App {
         let queue = QueueManager(settings: settings)
         // Used by CI to photograph the queue with a few sample rows.
         if CommandLine.arguments.contains("--demo") { queue.loadDemo() }
+        // Used by CI to photograph the Import window with a long sample list.
+        if CommandLine.arguments.contains("--import-demo") { queue.openImport(text: ImportSelfTest.sampleList, name: "Sample list") }
         _queue = StateObject(wrappedValue: queue)
     }
 
@@ -41,7 +45,10 @@ struct CosmoGravApp: App {
             CommandGroup(replacing: .appInfo) {
                 AboutButton(title: "About CosmoGrav", ghost: false)
             }
-            CommandGroup(replacing: .newItem) {}
+            CommandGroup(replacing: .newItem) {
+                Button("Import Link List…") { queue.openImport() }
+                    .keyboardShortcut("o", modifiers: .command)
+            }
             CommandGroup(replacing: .help) {
                 Link("Creation of Cosmos Website", destination: Tools.website)
             }
