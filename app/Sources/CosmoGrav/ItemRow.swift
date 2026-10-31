@@ -202,7 +202,7 @@ struct ItemRow: View {
     private var actions: some View {
         VStack(spacing: 6) {
             switch item.state {
-            case .failed where item.needsBrowser, .cancelled where item.needsBrowser:
+            case .failed where item.needsBrowser:
                 iconButton("safari", help: "Open download page", tint: Theme.gold) { queue.openDownloadPage(item) }
             case .ready, .cancelled:
                 iconButton("arrow.down", help: item.state == .cancelled && item.isFile ? "Resume" : "Download", tint: Theme.gold) { queue.start(item) }

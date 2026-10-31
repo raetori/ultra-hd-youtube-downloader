@@ -167,6 +167,61 @@ final class QueueManager: ObservableObject {
 
     func browserSession(for item: DownloadItem) -> BrowserSession? { browserSessions[item.id] }
 
+    /// Uses the page in the background: waits out its timer, clicks its free download button, and only shows
+    /// the page when the site asks for a robot check or the button can't be found.
+    private func runPage(_ item: DownloadItem) {
+        let session = browserSessions[item.id] ?? BrowserSession(item: item, queue: self)
+        browserSessions[item.id] = session
+        let handle = RunningProcess()
+        handle.onCancel { [weak self, weak session] in
+            Task { @MainActor in
+                guard let self, let session, !session.isDownloading else { return }
+                self.pageStopped(session)
+            }
+        }
+        item.runner = handle
+        item.state = .downloading
+        item.progress = 0
+        item.errorMessage = nil
+        item.detail = "Opening the site…"
+        session.startAutomatic()
+        updateDockBadge()
+    }
+
+    func pageStatus(_ session: BrowserSession, _ detail: String) {
+        let item = session.item
+        guard item.state == .downloading, !session.isDownloading else { return }
+        item.detail = detail
+    }
+
+    func pageNeedsYou(_ session: BrowserSession) {
+        session.item.detail = "The site wants a robot check. Answer it in the window that opened."
+        browserItem = session.item
+        NSApp.activate(ignoringOtherApps: true)
+        _ = NSApp.requestUserAttention(.criticalRequest)
+    }
+
+    func pageGaveUp(_ session: BrowserSession) {
+        let item = session.item
+        guard item.state == .downloading, !session.isDownloading else { return }
+        browserSessions.removeValue(forKey: item.id)?.close()
+        item.state = .failed
+        item.errorMessage = "CosmoGrav couldn't find this site's free download button on its own. Click Open download page and click it yourself; the download is taken from there."
+        item.detail = "Failed"
+        item.runner = nil
+        finishedOne()
+    }
+
+    private func pageStopped(_ session: BrowserSession) {
+        let item = session.item
+        browserSessions.removeValue(forKey: item.id)?.close()
+        item.state = .cancelled
+        item.detail = "Stopped"
+        item.runner = nil
+        if browserItem?.id == item.id { browserItem = nil }
+        finishedOne()
+    }
+
     func pageDownloadStarted(_ session: BrowserSession, name: String, ext: String, size: Int64?, handle: RunningProcess) {
         let item = session.item
         item.runner = handle
@@ -390,6 +445,18 @@ final class QueueManager: ObservableObject {
                 if item.autoStart { start(item) }
             } catch {
                 let err = error as? PipelineError
+                if err?.needsBrowser == true {
+                    // A file host's page: CosmoGrav uses it like a visitor would when the download starts.
+                    item.needsBrowser = true
+                    item.needsLogin = false
+                    item.infoLoaded = true
+                    item.errorMessage = nil
+                    item.site = Self.siteName("", url: url)
+                    item.state = .ready
+                    item.detail = "File host page · CosmoGrav waits out its timer and clicks its free download for you"
+                    if item.autoStart { start(item) }
+                    return
+                }
                 item.state = .failed
                 item.errorMessage = err?.message ?? error.localizedDescription
                 item.needsBrowser = err?.needsBrowser ?? false
@@ -500,6 +567,10 @@ final class QueueManager: ObservableObject {
     }
 
     private func run(_ item: DownloadItem) {
+        if item.needsBrowser && item.fileProbe == nil {
+            runPage(item)
+            return
+        }
         let handle = RunningProcess()
         item.runner = handle
         item.state = .downloading

@@ -20,11 +20,10 @@ enum PageSelfTest {
             let settings = AppSettings()
             settings.saveFolder = folder
             let queue = QueueManager(settings: settings)
-            let item = DownloadItem(url: args[0], quality: .best)
-            item.state = .failed
-            item.needsBrowser = true
-            queue.items.append(item)
-            queue.openDownloadPage(item)
+            // Shaped like a file host's page: the link is a page, so it gets the download-page treatment,
+            // then CosmoGrav must wait out the timer and click the free button on its own.
+            queue.add(urls: [(url: args[0], title: nil)], autoStart: true)
+            guard let item = queue.items.first else { print("FAIL no row"); exit(1) }
 
             let started = Date()
             var sawDownloading = false
@@ -34,7 +33,8 @@ enum PageSelfTest {
                 if item.state == .done || (sawDownloading && item.state != .downloading) { break }
             }
             print("STATE \(item.state) | \(item.detail) | \(item.errorMessage ?? "")")
-            check(sawDownloading, "the page's download went into the queue")
+            check(item.needsBrowser, "recognised as a download page, not \"Unsupported URL\"")
+            check(sawDownloading, "waited out the timer, clicked the free button, download went into the queue")
             check(item.state == .done, "download finished")
             if let file = item.outputURL, let data = try? Data(contentsOf: file) {
                 let hash = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
