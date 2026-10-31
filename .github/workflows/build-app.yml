@@ -94,6 +94,44 @@ jobs:
             "prores::http://127.0.0.1:8765/vp9-4k.webm" \
             "prores:3-8:http://127.0.0.1:8765/h264-1080.mp4" 2>&1 | tee dist/selftest.txt
 
+      - name: File host page test (timer, free button, download taken into the queue)
+        run: |
+          set -o pipefail
+          mkdir -p /tmp/files
+          python3 .github/scripts/range-server.py /tmp/files 8768 >/dev/null 2>&1 &
+          # A file host style page: a short timer, then the page starts its own download.
+          head -c 3145728 /dev/urandom > /tmp/files/pack.7z
+          PSHA=$(shasum -a 256 /tmp/files/pack.7z | cut -d' ' -f1)
+          cat > /tmp/files/page.html <<'HTML'
+          <!doctype html><html><body style="background:#111;color:#eee;font:16px sans-serif">
+          <h1>pack.7z (3 MB)</h1>
+          <p><a href="https://example.org/offer">Download Now</a> <a href="/register?f=1">FAST INSTANT DOWNLOAD</a></p>
+          <p><a id="free" href="#" onclick="go(event)">SLOW DOWNLOAD</a></p>
+          <script>
+          var started = false;
+          function go(e) {
+            var a = document.getElementById('free');
+            if (a.getAttribute('href') !== '#') return;
+            e.preventDefault();
+            if (started) return;
+            started = true;
+            var n = 4;
+            a.textContent = 'WAIT ' + n + ' SEC.';
+            var t = setInterval(function () {
+              n--;
+              if (n > 0) { a.textContent = 'WAIT ' + n + ' SEC.'; return; }
+              clearInterval(t);
+              a.textContent = 'SLOW DOWNLOAD';
+              a.setAttribute('href', 'pack.7z');
+              a.setAttribute('download', 'pack.7z');
+            }, 1000);
+          }
+          </script>
+          </body></html>
+          HTML
+          for i in $(seq 1 30); do if curl -fs -o /dev/null http://127.0.0.1:8768/page.html; then break; fi; sleep 1; done
+          "dist/CosmoGrav.app/Contents/MacOS/CosmoGrav" --selftest-page "http://127.0.0.1:8768/page.html" "$PSHA" 2>&1 | tee dist/selftest-page.txt
+
       - name: Keep the screenshot on a "ci-preview" pre-release
         if: always()
         continue-on-error: true
@@ -111,6 +149,7 @@ jobs:
           [ -f dist/screenshot-crawljob.png ] && gh release upload ci-preview dist/screenshot-crawljob.png --clobber
           [ -f dist/selftest-crawljob.txt ] && gh release upload ci-preview dist/selftest-crawljob.txt --clobber
           [ -f dist/selftest-files.txt ] && gh release upload ci-preview dist/selftest-files.txt --clobber
+          [ -f dist/selftest-page.txt ] && gh release upload ci-preview dist/selftest-page.txt --clobber
           [ -f dist/selftest.txt ] && gh release upload ci-preview dist/selftest.txt --clobber
 
       - name: Publish release

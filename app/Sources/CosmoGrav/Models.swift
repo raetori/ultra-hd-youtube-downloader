@@ -94,6 +94,8 @@ final class DownloadItem: ObservableObject, Identifiable {
     @Published var detail = "Getting info…"
     @Published var errorMessage: String?
     @Published var needsLogin = false
+    /// The link is a file host's download page, opened with "Open download page".
+    @Published var needsBrowser = false
     @Published var useLogin = false
     @Published var outputURL: URL?
 

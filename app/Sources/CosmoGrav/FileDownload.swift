@@ -89,6 +89,12 @@ struct FileProbe: Sendable {
 
 struct RangeIgnored: Error {}
 
+/// The address answered with a web page instead of a file.
+struct WebPageError: LocalizedError {
+    let message: String
+    var errorDescription: String? { message }
+}
+
 /// Downloads a file over several connections at once, keeps the pieces so a stopped download resumes where it
 /// stopped, and retries a dropped connection on its own. Plain HTTPS requests, like a browser's download; nothing
 /// is bypassed, so links that need a login, a captcha or a wait in the browser are reported instead.
@@ -122,7 +128,7 @@ enum FileDownloader {
             if let service {
                 throw PipelineError(message: "\(service) showed a web page instead of the file. The link may not be public (set it to “Anyone with the link”), or the file needs to be opened in your browser.")
             }
-            throw PipelineError(message: "This link opens a web page, not a file or a video.")
+            throw WebPageError(message: "This link opens a web page, not a file or a video.")
         }
         var size: Int64?
         var ranges = false

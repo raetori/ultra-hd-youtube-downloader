@@ -95,6 +95,9 @@ final class QueueManager: ObservableObject {
     /// Files opened from Finder before the queue existed.
     static var pendingFiles: [URL] = []
     private var watcher: CrawljobWatcher?
+    /// The download page shown in CosmoGrav's browser.
+    @Published var browserItem: DownloadItem?
+    private var browserSessions: [UUID: BrowserSession] = [:]
     private var settingsObservers: Set<AnyCancellable> = []
     private var lastPasteboardChange = NSPasteboard.general.changeCount
 
@@ -153,6 +156,129 @@ final class QueueManager: ObservableObject {
             items.append(item)
             fetchInfo(item)
         }
+    }
+
+    // MARK: Download pages (file hosts)
+
+    func openDownloadPage(_ item: DownloadItem) {
+        if browserSessions[item.id] == nil { browserSessions[item.id] = BrowserSession(item: item, queue: self) }
+        browserItem = item
+    }
+
+    func browserSession(for item: DownloadItem) -> BrowserSession? { browserSessions[item.id] }
+
+    /// Uses the page in the background: waits out its timer, clicks its free download button, and only shows
+    /// the page when the site asks for a robot check or the button can't be found.
+    private func runPage(_ item: DownloadItem) {
+        let session = browserSessions[item.id] ?? BrowserSession(item: item, queue: self)
+        browserSessions[item.id] = session
+        let handle = RunningProcess()
+        handle.onCancel { [weak self, weak session] in
+            Task { @MainActor in
+                guard let self, let session, !session.isDownloading else { return }
+                self.pageStopped(session)
+            }
+        }
+        item.runner = handle
+        item.state = .downloading
+        item.progress = 0
+        item.errorMessage = nil
+        item.detail = "Opening the site…"
+        session.startAutomatic()
+        updateDockBadge()
+    }
+
+    func pageStatus(_ session: BrowserSession, _ detail: String) {
+        let item = session.item
+        guard item.state == .downloading, !session.isDownloading else { return }
+        item.detail = detail
+    }
+
+    func pageNeedsYou(_ session: BrowserSession) {
+        session.item.detail = "The site wants a robot check. Answer it in the window that opened."
+        browserItem = session.item
+        NSApp.activate(ignoringOtherApps: true)
+        _ = NSApp.requestUserAttention(.criticalRequest)
+    }
+
+    func pageGaveUp(_ session: BrowserSession) {
+        let item = session.item
+        guard item.state == .downloading, !session.isDownloading else { return }
+        browserSessions.removeValue(forKey: item.id)?.close()
+        item.state = .failed
+        item.errorMessage = "CosmoGrav couldn't find this site's free download button on its own. Click Open download page and click it yourself; the download is taken from there."
+        item.detail = "Failed"
+        item.runner = nil
+        finishedOne()
+    }
+
+    private func pageStopped(_ session: BrowserSession) {
+        let item = session.item
+        browserSessions.removeValue(forKey: item.id)?.close()
+        item.state = .cancelled
+        item.detail = "Stopped"
+        item.runner = nil
+        if browserItem?.id == item.id { browserItem = nil }
+        finishedOne()
+    }
+
+    func pageDownloadStarted(_ session: BrowserSession, name: String, ext: String, size: Int64?, handle: RunningProcess) {
+        let item = session.item
+        item.runner = handle
+        item.title = name + "." + ext
+        if item.fileName.isEmpty || !item.infoLoaded { item.fileName = name }
+        item.site = Self.siteName("", url: item.url)
+        item.state = .downloading
+        item.progress = 0
+        item.errorMessage = nil
+        item.needsBrowser = false
+        item.detail = "Downloading from the site…" + (size.map { " " + ByteCountFormatter.string(fromByteCount: $0, countStyle: .file) } ?? "")
+        browserItem = nil
+        updateDockBadge()
+    }
+
+    func pageDownloadProgress(_ session: BrowserSession, fraction: Double, detail: String) {
+        let item = session.item
+        guard item.state == .downloading else { return }
+        item.progress = min(max(fraction, 0), 1)
+        item.detail = detail
+    }
+
+    func pageDownloadFinished(_ session: BrowserSession, file: URL) {
+        let item = session.item
+        browserSessions.removeValue(forKey: item.id)?.close()
+        let folder = item.folder.reduce(item.baseFolder ?? settings.saveFolder) { $0.appendingPathComponent($1, isDirectory: true) }
+        do {
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let ext = file.pathExtension.isEmpty ? "bin" : file.pathExtension
+            let name = item.fileName.isEmpty ? file.deletingPathExtension().lastPathComponent : item.fileName
+            let destination = FileNames.unique(in: folder, name: name, ext: ext)
+            try FileManager.default.moveItem(at: file, to: destination)
+            try? FileManager.default.removeItem(at: file.deletingLastPathComponent())
+            item.outputURL = destination
+            item.state = .done
+            item.progress = 1
+            item.detail = "Saved to \(folder.lastPathComponent)"
+            addHistory(item, file: destination)
+        } catch {
+            item.state = .failed
+            item.errorMessage = "The download finished but couldn't be saved: \(error.localizedDescription)"
+            item.detail = "Failed"
+        }
+        item.runner = nil
+        finishedOne()
+    }
+
+    func pageDownloadFailed(_ session: BrowserSession, error: Error) {
+        let item = session.item
+        browserSessions.removeValue(forKey: item.id)?.close()
+        let stopped = item.runner?.cancelled ?? false
+        item.state = stopped ? .cancelled : .failed
+        item.needsBrowser = true
+        item.errorMessage = stopped ? nil : "The site stopped the download (\(error.localizedDescription)). Open the download page again to retry."
+        item.detail = stopped ? "Stopped. Open the download page again to restart." : "Failed"
+        item.runner = nil
+        finishedOne()
     }
 
     // MARK: .crawljob files
@@ -276,7 +402,11 @@ final class QueueManager: ObservableObject {
                     case .unsupported(let reason):
                         throw PipelineError(message: reason)
                     case .file(let direct, let service):
-                        applyFile(item, try await FileDownloader.probe(direct, service: service), service: service)
+                        do {
+                            applyFile(item, try await FileDownloader.probe(direct, service: service), service: service)
+                        } catch is WebPageError {
+                            throw Self.downloadPageError
+                        }
                         return
                     }
                 }
@@ -285,8 +415,14 @@ final class QueueManager: ObservableObject {
                     info = try await Pipeline.fetchInfo(url: url, quality: quality, useLogin: useLogin, browser: browser)
                 } catch let error as PipelineError where error.message.lowercased().contains("unsupported url") {
                     // Not a video site: it may still be a plain file link without a file name in it.
-                    guard let direct = URL(string: url), let probe = try? await FileDownloader.probe(direct, service: nil) else { throw error }
-                    applyFile(item, probe, service: nil)
+                    guard let direct = URL(string: url) else { throw error }
+                    do {
+                        applyFile(item, try await FileDownloader.probe(direct, service: nil), service: nil)
+                    } catch is WebPageError {
+                        throw Self.downloadPageError
+                    } catch {
+                        throw PipelineError(message: "CosmoGrav doesn't know this site, and the link isn't a file it can download: \(error.localizedDescription)")
+                    }
                     return
                 }
                 item.fileProbe = nil
@@ -309,15 +445,32 @@ final class QueueManager: ObservableObject {
                 if item.autoStart { start(item) }
             } catch {
                 let err = error as? PipelineError
+                if err?.needsBrowser == true {
+                    // A file host's page: CosmoGrav uses it like a visitor would when the download starts.
+                    item.needsBrowser = true
+                    item.needsLogin = false
+                    item.infoLoaded = true
+                    item.errorMessage = nil
+                    item.site = Self.siteName("", url: url)
+                    item.state = .ready
+                    item.detail = "File host page · CosmoGrav waits out its timer and clicks its free download for you"
+                    if item.autoStart { start(item) }
+                    return
+                }
                 item.state = .failed
                 item.errorMessage = err?.message ?? error.localizedDescription
-                item.needsLogin = err?.needsLogin ?? false
-                item.detail = "Couldn't load this link"
+                item.needsBrowser = err?.needsBrowser ?? false
+                item.needsLogin = item.needsBrowser ? false : (err?.needsLogin ?? false)
+                item.detail = item.needsBrowser ? "Download page" : "Couldn't load this link"
                 if item.site.isEmpty { item.site = Self.siteName("", url: url) }
                 continueBatchesIfIdle()
             }
         }
     }
+
+    static let downloadPageError = PipelineError(
+        message: "This is a download page, not the file itself. Click Open download page, use the site's free download button there (wait out its timer), and CosmoGrav takes over the download.",
+        needsBrowser: true)
 
     private func applyFile(_ item: DownloadItem, _ probe: FileProbe, service: String?) {
         item.fileProbe = probe
@@ -331,6 +484,7 @@ final class QueueManager: ObservableObject {
         item.trimEnd = nil
         item.infoLoaded = true
         item.needsLogin = false
+        item.needsBrowser = false
         if item.state == .fetching {
             item.state = .ready
             let size = probe.size.map { " · " + ByteCountFormatter.string(fromByteCount: $0, countStyle: .file) } ?? ""
@@ -394,6 +548,7 @@ final class QueueManager: ObservableObject {
 
     func remove(_ item: DownloadItem) {
         if item.state.isActive { item.runner?.cancel() }
+        browserSessions.removeValue(forKey: item.id)?.close()
         items.removeAll { $0.id == item.id }
         continueBatchesIfIdle()
     }
@@ -412,6 +567,10 @@ final class QueueManager: ObservableObject {
     }
 
     private func run(_ item: DownloadItem) {
+        if item.needsBrowser && item.fileProbe == nil {
+            runPage(item)
+            return
+        }
         let handle = RunningProcess()
         item.runner = handle
         item.state = .downloading
@@ -526,13 +685,18 @@ final class QueueManager: ObservableObject {
                 }
             }
             item.runner = nil
-            pump()
-            continueBatchesIfIdle()
-            updateDockBadge()
-            if activeCount == 0 && waitingCount == 0 && finishedCount > 0 && !(autoContinue && !pendingBatches.isEmpty) {
-                _ = NSApp.requestUserAttention(.informationalRequest)
-                notifyFinished()
-            }
+            finishedOne()
+        }
+    }
+
+    /// After any download ends: start the next one, move batches along, and tell the user when all is done.
+    private func finishedOne() {
+        pump()
+        continueBatchesIfIdle()
+        updateDockBadge()
+        if activeCount == 0 && waitingCount == 0 && finishedCount > 0 && !(autoContinue && !pendingBatches.isEmpty) {
+            _ = NSApp.requestUserAttention(.informationalRequest)
+            notifyFinished()
         }
     }
 

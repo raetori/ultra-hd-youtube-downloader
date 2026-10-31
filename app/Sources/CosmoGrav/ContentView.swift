@@ -45,6 +45,13 @@ struct ContentView: View {
                 CrawljobView(draft: draft).environmentObject(queue).environmentObject(settings).preferredColorScheme(.dark)
             }
         }
+        .background {
+            Color.clear.sheet(item: $queue.browserItem) { item in
+                if let session = queue.browserSession(for: item) {
+                    BrowserSheet(session: session).preferredColorScheme(.dark)
+                }
+            }
+        }
         .onAppear {
             updater.startChecking()
             // Used by CI to photograph the About window.
