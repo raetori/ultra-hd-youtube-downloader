@@ -92,7 +92,7 @@ struct ItemRow: View {
         ZStack {
             Theme.space
             if item.state == .fetching { OrbRing(progress: nil, size: 26) }
-            else { Image(systemName: item.quality.symbol).foregroundStyle(Theme.gold.opacity(0.5)) }
+            else { Image(systemName: item.isFile ? "doc" : item.quality.symbol).foregroundStyle(Theme.gold.opacity(0.5)) }
         }
     }
 
@@ -103,7 +103,7 @@ struct ItemRow: View {
                 .textFieldStyle(.plain)
                 .font(.system(size: 12))
                 .disabled(!item.state.canEdit)
-            Text("." + item.quality.fileExtension).font(.system(size: 12)).foregroundStyle(.secondary)
+            Text("." + (item.fileProbe?.ext ?? item.quality.fileExtension)).font(.system(size: 12)).foregroundStyle(.secondary)
         }
         .padding(.horizontal, 9)
         .padding(.vertical, 4)
@@ -111,7 +111,20 @@ struct ItemRow: View {
         .help("Rename the file before downloading")
     }
 
+    @ViewBuilder
     private var optionRow: some View {
+        if let probe = item.fileProbe {
+            HStack(spacing: 8) {
+                Chip(text: "Original ." + probe.ext, symbol: "doc", tint: Theme.accent)
+                if let size = probe.size { Chip(text: ByteCountFormatter.string(fromByteCount: size, countStyle: .file)) }
+                if probe.ranges { Chip(text: "Resumable", symbol: "arrow.clockwise", tint: Theme.textDim) }
+            }
+        } else {
+            mediaOptions
+        }
+    }
+
+    private var mediaOptions: some View {
         HStack(spacing: 8) {
             Menu {
                 ForEach(Quality.allCases) { quality in
@@ -183,7 +196,7 @@ struct ItemRow: View {
         VStack(spacing: 6) {
             switch item.state {
             case .ready, .cancelled:
-                iconButton("arrow.down", help: "Download", tint: Theme.gold) { queue.start(item) }
+                iconButton("arrow.down", help: item.state == .cancelled && item.isFile ? "Resume" : "Download", tint: Theme.gold) { queue.start(item) }
             case .failed:
                 iconButton("arrow.clockwise", help: "Try again", tint: Theme.gold) { queue.retry(item) }
             case .downloading, .converting:
@@ -195,7 +208,7 @@ struct ItemRow: View {
                     }
                 }
                 .buttonStyle(.borderless)
-                .help("Cancel")
+                .help(item.isFile ? "Pause (resumes where it stopped)" : "Cancel")
             case .queued:
                 iconButton("xmark", help: "Cancel", tint: Theme.textDim) { queue.cancel(item) }
             case .done:

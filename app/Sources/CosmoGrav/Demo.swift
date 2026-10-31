@@ -19,7 +19,15 @@ extension QueueManager {
                            quality: .best, state: .ready, detail: "Ready · about 820 MB")
         trimmed.trimStart = 61
         trimmed.trimEnd = 94
+        let file = make("Client footage pack.zip", site: "Google Drive", duration: 0, resolution: "", quality: .best,
+                        state: .downloading, progress: 0.41, detail: "Downloading in 8 pieces · 1.6 GB of 3.9 GB · 48 MB/s · 0:48 left")
+        file.duration = nil
+        file.resolution = nil
+        file.fileName = "Client footage pack"
+        file.fileProbe = FileProbe(source: URL(string: "https://example.com/pack.zip")!, size: 3_900_000_000, ranges: true,
+                                   name: "Client footage pack", ext: "zip")
         items = [
+            file,
             make("Creation of Cosmos launch film", site: "YouTube", duration: 152, resolution: "4K", quality: .best,
                  state: .downloading, progress: 0.62, detail: "62% · 14.2 MB/s · 0:09 left"),
             make("Behind the cut: Makati studio session", site: "Instagram", duration: 48, resolution: "1080p", quality: .hd1080,

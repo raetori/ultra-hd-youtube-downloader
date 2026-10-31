@@ -4,7 +4,7 @@ _For Mac and Windows. Formerly Cosmos Media Downloader._
 
 <img src="assets/icon.png" width="96" align="right">
 
-Download videos from YouTube, TikTok, Instagram, Facebook, Vimeo and more in HD, as **H.264 MP4 files that import straight into Premiere Pro**. Made by [Creation of Cosmos](https://www.creationofcosmos.com).
+Download videos from YouTube, TikTok, Instagram, Facebook, Vimeo and more in HD, as **H.264 MP4 files that import straight into Premiere Pro**. On Mac it also downloads any other file (zip, pdf, images, audio, project files) and public Google Drive, Dropbox and OneDrive links, faster and resumable. Made by [Creation of Cosmos](https://www.creationofcosmos.com).
 
 **Please only download content you have the rights to use.**
 
@@ -51,7 +51,8 @@ When a new version is out, CosmoGrav shows an **Update now** button at the top. 
 6. Got a long list (dozens or hundreds of links)? Click **Import list** (⌘O) on Mac, then open a `.txt` or `.csv` file or paste the list. You can also drop the file on the window, and a paste of more than 20 links opens the same screen. CosmoGrav removes repeats, lists any lines it skipped, keeps videos, Shorts and playlists apart, and divides the list into batches of 10, 25, 50 or 100. Pick **Download as** to set the quality for the whole list, including Captions only (SRT). Each batch can go into its own folder, and batches can download one after another on their own. **Save batches as files** writes each batch to its own `.txt`. The list is read only on your computer and only web links (http/https) are accepted.
 7. Coming from **JDownloader**? CosmoGrav reads `.crawljob` files (Mac), in both the plain `text=` form and the JSON form. Double-click one, drop it on the window, or use **File → Open .crawljob** (⇧⌘O). You see each package with its links and folder, tick the ones you want, and add them. CosmoGrav uses `text` (the links), `packageName` (a folder of that name in your save folder), `downloadFolder` (including `<jd:packagename>`; it must be inside your home folder or on an external drive), `filename`, `enabled` and `autoStart`. Other fields, such as priority, chunks and passwords, are ignored and never stored.
    - **Folder Watch**: turn it on in **Settings** and pick a folder (by default `Downloads/CosmoGrav Folder Watch`). Any `.crawljob` file saved there is added on its own within a few seconds, and then moved into an `added` folder inside it, just like JDownloader's Folder Watch.
-8. In **Settings** you can also save captions (.srt) next to each video and get a notification when downloads finish.
+8. **Files and cloud links** (Mac): paste a link to any file, like a `.zip`, `.pdf`, `.wav`, `.psd` or a project file, or a public share link from **Google Drive**, **Dropbox** or **OneDrive**. The file is kept exactly as it is (only video gets converted). Big files download over up to 8 connections at once, a dropped connection retries on its own, and the ✕ button pauses: click Download again (even after quitting) and it carries on where it stopped. Share links must be set to "Anyone with the link". Google Drive folders and MEGA links can't be downloaded from a link (MEGA encrypts its files), and nothing that needs a login, a captcha or a wait in the browser is bypassed.
+9. In **Settings** you can also save captions (.srt) next to each video and get a notification when downloads finish.
 
 Every video comes out as H.264 + AAC MP4. If the site's file is already H.264 it is kept as is (instant). Otherwise it is converted with your computer's built-in video encoder (Apple's on Mac; NVIDIA, Intel or AMD graphics on Windows, or the processor when there is none).
 

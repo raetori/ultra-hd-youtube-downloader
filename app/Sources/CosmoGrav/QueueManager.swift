@@ -115,6 +115,7 @@ final class QueueManager: ObservableObject {
         loadHistory()
         QueueManager.shared = self
         Task.detached(priority: .background) { await Tools.updateDownloaderIfStale() }
+        Task.detached(priority: .background) { FileDownloader.cleanStale() }
         let watcher = CrawljobWatcher(queue: self)
         self.watcher = watcher
         settings.$watchFolderOn.combineLatest(settings.$watchFolder)
@@ -270,7 +271,25 @@ final class QueueManager: ObservableObject {
             await infoLimiter.acquire()
             defer { Task { await infoLimiter.release() } }
             do {
-                let info = try await Pipeline.fetchInfo(url: url, quality: quality, useLogin: useLogin, browser: browser)
+                if let resolution = FileLinks.resolve(url) {
+                    switch resolution {
+                    case .unsupported(let reason):
+                        throw PipelineError(message: reason)
+                    case .file(let direct, let service):
+                        applyFile(item, try await FileDownloader.probe(direct, service: service), service: service)
+                        return
+                    }
+                }
+                let info: MediaInfo
+                do {
+                    info = try await Pipeline.fetchInfo(url: url, quality: quality, useLogin: useLogin, browser: browser)
+                } catch let error as PipelineError where error.message.lowercased().contains("unsupported url") {
+                    // Not a video site: it may still be a plain file link without a file name in it.
+                    guard let direct = URL(string: url), let probe = try? await FileDownloader.probe(direct, service: nil) else { throw error }
+                    applyFile(item, probe, service: nil)
+                    return
+                }
+                item.fileProbe = nil
                 if let entries = info.entries {
                     // A playlist link becomes one row per video.
                     items.removeAll { $0.id == item.id }
@@ -298,6 +317,27 @@ final class QueueManager: ObservableObject {
                 continueBatchesIfIdle()
             }
         }
+    }
+
+    private func applyFile(_ item: DownloadItem, _ probe: FileProbe, service: String?) {
+        item.fileProbe = probe
+        item.title = probe.name + "." + probe.ext
+        if !item.keepFileName, item.fileName.isEmpty || !item.infoLoaded { item.fileName = probe.name }
+        item.site = service ?? Self.siteName("", url: item.url)
+        item.thumbnail = nil
+        item.duration = nil
+        item.resolution = nil
+        item.trimStart = nil
+        item.trimEnd = nil
+        item.infoLoaded = true
+        item.needsLogin = false
+        if item.state == .fetching {
+            item.state = .ready
+            let size = probe.size.map { " · " + ByteCountFormatter.string(fromByteCount: $0, countStyle: .file) } ?? ""
+            let resumable = FileDownloader.totalSize(FileDownloader.piecesFolder(for: item.url).contentsIfAny.filter { $0.lastPathComponent.hasPrefix("piece-") || $0.lastPathComponent == "complete" }) > 0
+            item.detail = (resumable ? "Ready to resume" : "Ready") + size + " · kept as .\(probe.ext)"
+        }
+        if item.autoStart { start(item) }
     }
 
     static func siteName(_ extractor: String, url: String) -> String {
@@ -400,7 +440,21 @@ final class QueueManager: ObservableObject {
                 try FileManager.default.createDirectory(at: work, withIntermediateDirectories: true)
                 defer { try? FileManager.default.removeItem(at: work) }
 
-                if !quality.hasMedia {
+                if let probe = item.fileProbe {
+                    // A file kept exactly as it is: downloaded in pieces that survive a stop, then moved into place.
+                    let pieces = FileDownloader.piecesFolder(for: url)
+                    let downloaded = try await FileDownloader.download(probe, folder: pieces, handle: handle, onProgress: report)
+                    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                    let name = item.fileName.isEmpty ? probe.name : item.fileName
+                    let destination = FileNames.unique(in: folder, name: name, ext: probe.ext)
+                    try FileManager.default.moveItem(at: downloaded, to: destination)
+                    try? FileManager.default.removeItem(at: pieces)
+                    item.outputURL = destination
+                    item.state = .done
+                    item.progress = 1
+                    item.detail = "Saved to \(folder.lastPathComponent)"
+                    addHistory(item, file: destination)
+                } else if !quality.hasMedia {
                     // Captions only: no video is downloaded.
                     item.detail = "Saving captions…"
                     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -462,7 +516,7 @@ final class QueueManager: ObservableObject {
             } catch {
                 if handle.cancelled || error is CancellationError {
                     item.state = .cancelled
-                    item.detail = "Cancelled"
+                    item.detail = item.isFile ? "Paused. Click Download to resume where it stopped." : "Cancelled"
                 } else {
                     let err = error as? PipelineError
                     item.state = .failed

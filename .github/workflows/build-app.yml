@@ -31,6 +31,18 @@ jobs:
         run: |
           "dist/CosmoGrav.app/Contents/MacOS/CosmoGrav" --selftest-crawljob 2>&1 | tee dist/selftest-crawljob.txt
 
+      - name: File download test (pieces, pause and resume, served on this machine)
+        run: |
+          set -o pipefail
+          mkdir -p /tmp/files
+          head -c 67108864 /dev/urandom > /tmp/files/big.bin
+          SHA=$(shasum -a 256 /tmp/files/big.bin | cut -d' ' -f1)
+          python3 .github/scripts/range-server.py /tmp/files 8766 >/dev/null 2>&1 &
+          (cd /tmp/files && python3 -m http.server 8767 --bind 127.0.0.1 >/dev/null 2>&1 &)
+          for i in $(seq 1 30); do curl -fsI http://127.0.0.1:8767/big.bin >/dev/null 2>&1 && break; sleep 1; done
+          "dist/CosmoGrav.app/Contents/MacOS/CosmoGrav" --selftest-files \
+            "http://127.0.0.1:8766/big.bin" "$SHA" "http://127.0.0.1:8767/big.bin" 2>&1 | tee dist/selftest-files.txt
+
       - name: Smoke test (launch the app and take a screenshot)
         continue-on-error: true
         run: |
@@ -98,6 +110,7 @@ jobs:
           [ -f dist/selftest-import.txt ] && gh release upload ci-preview dist/selftest-import.txt --clobber
           [ -f dist/screenshot-crawljob.png ] && gh release upload ci-preview dist/screenshot-crawljob.png --clobber
           [ -f dist/selftest-crawljob.txt ] && gh release upload ci-preview dist/selftest-crawljob.txt --clobber
+          [ -f dist/selftest-files.txt ] && gh release upload ci-preview dist/selftest-files.txt --clobber
           [ -f dist/selftest.txt ] && gh release upload ci-preview dist/selftest.txt --clobber
 
       - name: Publish release
