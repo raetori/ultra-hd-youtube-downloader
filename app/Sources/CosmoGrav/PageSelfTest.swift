@@ -27,13 +27,15 @@ enum PageSelfTest {
 
             let started = Date()
             var sawDownloading = false
+            var sawPage = false
             while Date().timeIntervalSince(started) < 90 {
                 try? await Task.sleep(nanoseconds: 250_000_000)
-                if item.state == .downloading { sawDownloading = true }
+                if item.needsBrowser { sawPage = true }
+                if item.state == .downloading && item.fileProbe == nil && item.title.hasSuffix(".7z") { sawDownloading = true }
                 if item.state == .done || (sawDownloading && item.state != .downloading) { break }
             }
             print("STATE \(item.state) | \(item.detail) | \(item.errorMessage ?? "")")
-            check(item.needsBrowser, "recognised as a download page, not \"Unsupported URL\"")
+            check(sawPage, "recognised as a download page, not \"Unsupported URL\"")
             check(sawDownloading, "waited out the timer, clicked the free button, download went into the queue")
             check(item.state == .done, "download finished")
             if let file = item.outputURL, let data = try? Data(contentsOf: file) {
