@@ -27,6 +27,29 @@ struct SettingsView: View {
             }
 
             Section {
+                Toggle("Watch a folder for .crawljob files", isOn: $settings.watchFolderOn)
+                LabeledContent("Folder") {
+                    HStack {
+                        Text((settings.watchFolder.path as NSString).abbreviatingWithTildeInPath)
+                            .lineLimit(1).truncationMode(.middle).foregroundStyle(.secondary)
+                        Button("Change…") { settings.chooseWatchFolder() }
+                        Button("Show") {
+                            try? FileManager.default.createDirectory(at: settings.watchFolder, withIntermediateDirectories: true)
+                            NSWorkspace.shared.open(settings.watchFolder)
+                        }
+                    }
+                }
+                Toggle("Start downloading right away", isOn: $settings.watchAutoStart)
+                    .disabled(!settings.watchFolderOn)
+            } header: {
+                Text("Folder Watch (JDownloader .crawljob files)")
+            } footer: {
+                Text("Drop a .crawljob file into this folder and CosmoGrav adds its links on its own, like JDownloader's Folder Watch. Files that say autoStart=TRUE or FALSE follow the file. Read files move into an “added” folder inside it. You can also double-click a .crawljob file, drop it on the window, or use File → Open .crawljob (⇧⌘O).")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
                 Picker("Browser login", selection: $settings.loginBrowser) {
                     ForEach(AppSettings.browsers, id: \.id) { Text($0.name).tag($0.id) }
                 }
