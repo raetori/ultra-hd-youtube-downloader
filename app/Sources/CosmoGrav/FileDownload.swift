@@ -237,10 +237,14 @@ enum FileDownloader {
 
     private static func downloadInPieces(_ probe: FileProbe, size: Int64, folder: URL, handle: RunningProcess,
                                          onProgress: @escaping @Sendable (Double, String) -> Void) async throws -> URL {
-        let count = Int(max(1, min(Int64(maxPieces), size / minimumPiece)))
-        let step = size / Int64(count)
-        let pieces = (0..<count).map { i in
-            Piece(index: i, start: Int64(i) * step, end: i == count - 1 ? size - 1 : Int64(i + 1) * step - 1)
+        let wanted: Int64 = min(Int64(maxPieces), size / minimumPiece)
+        let count = Int(max(1, wanted))
+        let step: Int64 = size / Int64(count)
+        var pieces: [Piece] = []
+        for i in 0..<count {
+            let start: Int64 = Int64(i) * step
+            let end: Int64 = i == count - 1 ? size - 1 : start + step - 1
+            pieces.append(Piece(index: i, start: start, end: end))
         }
         let files = pieces.map { folder.appendingPathComponent("piece-\($0.index)") }
         let label = count > 1 ? "Downloading in \(count) pieces" : "Downloading"
