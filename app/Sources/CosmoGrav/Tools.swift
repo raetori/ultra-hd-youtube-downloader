@@ -6,6 +6,8 @@ enum Tools {
         .appendingPathComponent("Library/Application Support/TeamYTDownloader")
     static let bin = base.appendingPathComponent("bin")
     static let workRoot = base.appendingPathComponent("work")
+    /// Pieces of unfinished file downloads, kept so they resume (also after quitting).
+    static let partialRoot = base.appendingPathComponent("partial")
     static let historyFile = base.appendingPathComponent("history.json")
 
     static var ytdlp: URL { bin.appendingPathComponent("yt-dlp") }
@@ -45,6 +47,7 @@ final class RunningProcess: @unchecked Sendable {
     private let lock = NSLock()
     private var pid: Int32 = 0
     private var _cancelled = false
+    private var cancelHandlers: [@Sendable () -> Void] = []
 
     var cancelled: Bool { lock.lock(); defer { lock.unlock() }; return _cancelled }
 
@@ -60,8 +63,23 @@ final class RunningProcess: @unchecked Sendable {
         lock.lock()
         _cancelled = true
         let current = pid
+        let handlers = cancelHandlers
+        cancelHandlers = []
         lock.unlock()
         if current > 0 { ProcessKiller.killTree(current) }
+        handlers.forEach { $0() }
+    }
+
+    /// Runs `stop` when cancelled (right away if that already happened). Used for network requests.
+    func onCancel(_ stop: @escaping @Sendable () -> Void) {
+        lock.lock()
+        if _cancelled {
+            lock.unlock()
+            stop()
+            return
+        }
+        cancelHandlers.append(stop)
+        lock.unlock()
     }
 }
 

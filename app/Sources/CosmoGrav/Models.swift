@@ -105,6 +105,9 @@ final class DownloadItem: ObservableObject, Identifiable {
     var baseFolder: URL?
     /// A name chosen before the info loaded (a .crawljob's filename) that the video's title shouldn't replace.
     var keepFileName = false
+    /// Set for links to files kept as they are (zip, pdf, Drive…), which skip the video pipeline.
+    @Published var fileProbe: FileProbe?
+    var isFile: Bool { fileProbe != nil }
     /// Imported in auto mode: starts downloading as soon as its info has loaded.
     var autoStart = false
     var runner: RunningProcess?
