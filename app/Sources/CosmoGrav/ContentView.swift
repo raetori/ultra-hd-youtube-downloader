@@ -39,6 +39,12 @@ struct ContentView: View {
         .sheet(item: $queue.importDraft) { draft in
             ImportView(draft: draft).environmentObject(queue).preferredColorScheme(.dark)
         }
+        .background {
+            // Its own view, so it never competes with the Import window's sheet.
+            Color.clear.sheet(item: $queue.crawljobDraft) { draft in
+                CrawljobView(draft: draft).environmentObject(queue).environmentObject(settings).preferredColorScheme(.dark)
+            }
+        }
         .onAppear {
             updater.startChecking()
             // Used by CI to photograph the About window.
@@ -198,6 +204,11 @@ struct ContentView: View {
                 }
                 .modifier(BannerShape(tint: Theme.gold))
             }
+            if let notice = queue.watchNotice {
+                Banner(symbol: "tray.and.arrow.down", tint: Theme.gold, text: notice, buttonTitle: "OK") {
+                    queue.watchNotice = nil
+                }
+            }
             PendingBatchesBanner()
             if let version = updater.availableVersion {
                 Banner(symbol: "sparkles", tint: Theme.gold,
@@ -210,6 +221,7 @@ struct ContentView: View {
         .padding(.horizontal, 24)
         .animation(Theme.ease, value: queue.clipboardLinks)
         .animation(Theme.ease, value: queue.pendingBatches.count)
+        .animation(Theme.ease, value: queue.watchNotice)
     }
 
     // MARK: Queue
@@ -238,7 +250,7 @@ struct ContentView: View {
                 .font(.system(size: 22, weight: .medium))
                 .tracking(-0.4)
                 .foregroundStyle(.white)
-            Text("Copy one or more links, then click Paste links. You can also drag links here.\nGot a long list? Click Import list, or drop a .txt or .csv file here.")
+            Text("Copy one or more links, then click Paste links. You can also drag links here.\nGot a long list? Click Import list, or drop a .txt, .csv or JDownloader .crawljob file here.")
                 .font(.system(size: 12))
                 .foregroundStyle(Theme.textDim)
                 .multilineTextAlignment(.center)
@@ -352,8 +364,12 @@ struct ContentView: View {
 
     /// A .txt or .csv dropped on the window opens in the Import window.
     private func openDroppedList(_ url: URL) {
+        if url.pathExtension.lowercased() == Crawljob.fileExtension {
+            queue.openCrawljobs([url])
+            return
+        }
         guard LinkImport.fileExtensions.contains(url.pathExtension.lowercased()) else {
-            addMessage = "Drop a .txt or .csv file with links, or the links themselves."
+            addMessage = "Drop a .txt, .csv or .crawljob file with links, or the links themselves."
             return
         }
         do {

@@ -101,6 +101,10 @@ final class DownloadItem: ObservableObject, Identifiable {
     var expectedParts = 1
     /// Subfolders inside the save folder, for imported lists divided into folders.
     var folder: [String] = []
+    /// Saves here instead of the app's save folder (a .crawljob's downloadFolder).
+    var baseFolder: URL?
+    /// A name chosen before the info loaded (a .crawljob's filename) that the video's title shouldn't replace.
+    var keepFileName = false
     /// Imported in auto mode: starts downloading as soon as its info has loaded.
     var autoStart = false
     var runner: RunningProcess?

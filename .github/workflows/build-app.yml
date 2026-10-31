@@ -27,6 +27,10 @@ jobs:
           mkdir -p dist
           "dist/CosmoGrav.app/Contents/MacOS/CosmoGrav" --selftest-import 2>&1 | tee dist/selftest-import.txt
 
+      - name: .crawljob and Folder Watch test (no network)
+        run: |
+          "dist/CosmoGrav.app/Contents/MacOS/CosmoGrav" --selftest-crawljob 2>&1 | tee dist/selftest-crawljob.txt
+
       - name: Smoke test (launch the app and take a screenshot)
         continue-on-error: true
         run: |
@@ -49,6 +53,11 @@ jobs:
           open "dist/CosmoGrav.app" --args --import-demo
           sleep 8
           screencapture -x dist/screenshot-import.png
+          pkill -9 -x CosmoGrav || true
+          sleep 2
+          open "dist/CosmoGrav.app" --args --crawljob-demo
+          sleep 8
+          screencapture -x dist/screenshot-crawljob.png
           pkill -9 -x CosmoGrav || true
 
       - name: End-to-end test (real downloads with the Mac's own encoder)
@@ -87,6 +96,8 @@ jobs:
           [ -f dist/screenshot-about.png ] && gh release upload ci-preview dist/screenshot-about.png --clobber
           [ -f dist/screenshot-import.png ] && gh release upload ci-preview dist/screenshot-import.png --clobber
           [ -f dist/selftest-import.txt ] && gh release upload ci-preview dist/selftest-import.txt --clobber
+          [ -f dist/screenshot-crawljob.png ] && gh release upload ci-preview dist/screenshot-crawljob.png --clobber
+          [ -f dist/selftest-crawljob.txt ] && gh release upload ci-preview dist/selftest-crawljob.txt --clobber
           [ -f dist/selftest.txt ] && gh release upload ci-preview dist/selftest.txt --clobber
 
       - name: Publish release

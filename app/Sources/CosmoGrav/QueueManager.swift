@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import Foundation
+import UniformTypeIdentifiers
 import UserNotifications
 import SwiftUI
 
@@ -17,6 +18,11 @@ final class AppSettings: ObservableObject {
     @Published var saveCaptions: Bool { didSet { defaults.set(saveCaptions, forKey: "saveCaptions") } }
     @Published var notifyWhenDone: Bool { didSet { defaults.set(notifyWhenDone, forKey: "notifyWhenDone") } }
     @Published var watchClipboard: Bool { didSet { defaults.set(watchClipboard, forKey: "watchClipboard") } }
+    /// Folder Watch: .crawljob files dropped into `watchFolder` are added on their own, like JDownloader.
+    @Published var watchFolderOn: Bool { didSet { defaults.set(watchFolderOn, forKey: "watchFolderOn") } }
+    @Published var watchFolder: URL { didSet { defaults.set(watchFolder.path, forKey: "watchFolder") } }
+    /// For files that don't say autoStart=TRUE or FALSE themselves.
+    @Published var watchAutoStart: Bool { didSet { defaults.set(watchAutoStart, forKey: "watchAutoStart") } }
 
     static let browsers: [(id: String, name: String)] = [
         ("none", "Don't use a login"), ("safari", "Safari"), ("chrome", "Google Chrome"), ("brave", "Brave"),
@@ -34,6 +40,10 @@ final class AppSettings: ObservableObject {
         saveCaptions = defaults.bool(forKey: "saveCaptions")
         notifyWhenDone = defaults.object(forKey: "notifyWhenDone") as? Bool ?? true
         watchClipboard = defaults.object(forKey: "watchClipboard") as? Bool ?? true
+        watchFolderOn = defaults.bool(forKey: "watchFolderOn")
+        watchFolder = defaults.string(forKey: "watchFolder").map { URL(fileURLWithPath: $0, isDirectory: true) }
+            ?? downloads.appendingPathComponent("CosmoGrav Folder Watch", isDirectory: true)
+        watchAutoStart = defaults.object(forKey: "watchAutoStart") as? Bool ?? true
     }
 
     var loginBrowserName: String {
@@ -49,6 +59,17 @@ final class AppSettings: ObservableObject {
         panel.prompt = "Save Here"
         panel.message = "Choose where downloads are saved"
         if panel.runModal() == .OK, let url = panel.url { saveFolder = url }
+    }
+
+    func chooseWatchFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+        panel.directoryURL = watchFolder
+        panel.prompt = "Watch This Folder"
+        panel.message = "Choose the folder where .crawljob files are dropped"
+        if panel.runModal() == .OK, let url = panel.url { watchFolder = url }
     }
 }
 
@@ -67,6 +88,14 @@ final class QueueManager: ObservableObject {
     @Published var pendingBatches: [LinkBatch] = []
     /// Add the next batch on its own once the current one has finished.
     @Published var autoContinue = false
+    /// A .crawljob file waiting in its review window (opened, double-clicked or dropped).
+    @Published var crawljobDraft: CrawljobDraft?
+    /// What Folder Watch just did, shown as a banner.
+    @Published var watchNotice: String?
+    /// Files opened from Finder before the queue existed.
+    static var pendingFiles: [URL] = []
+    private var watcher: CrawljobWatcher?
+    private var settingsObservers: Set<AnyCancellable> = []
     private var lastPasteboardChange = NSPasteboard.general.changeCount
 
     let settings: AppSettings
@@ -86,6 +115,15 @@ final class QueueManager: ObservableObject {
         loadHistory()
         QueueManager.shared = self
         Task.detached(priority: .background) { await Tools.updateDownloaderIfStale() }
+        let watcher = CrawljobWatcher(queue: self)
+        self.watcher = watcher
+        settings.$watchFolderOn.combineLatest(settings.$watchFolder)
+            .sink { on, folder in watcher.configure(enabled: on, folder: folder) }
+            .store(in: &settingsObservers)
+        if !Self.pendingFiles.isEmpty {
+            openCrawljobs(Self.pendingFiles)
+            Self.pendingFiles = []
+        }
     }
 
     var activeCount: Int { items.filter { $0.state.isActive }.count }
@@ -102,16 +140,78 @@ final class QueueManager: ObservableObject {
         return links.count
     }
 
-    func add(urls: [(url: String, title: String?)], folder: [String] = [], autoStart: Bool = false, quality: Quality? = nil) {
+    func add(urls: [(url: String, title: String?)], folder: [String] = [], baseFolder: URL? = nil, autoStart: Bool = false,
+             quality: Quality? = nil) {
         toolsMissing = !Tools.installed
         for entry in urls {
             if items.contains(where: { $0.url == entry.url && $0.state != .done }) { continue }
             let item = DownloadItem(url: entry.url, quality: quality ?? settings.defaultQuality, title: entry.title)
             item.folder = folder
+            item.baseFolder = baseFolder
             item.autoStart = autoStart
             items.append(item)
             fetchInfo(item)
         }
+    }
+
+    // MARK: .crawljob files
+
+    /// Reads one or more .crawljob files into the review window (added to it if it is already open).
+    func openCrawljobs(_ files: [URL]) {
+        guard !files.isEmpty else { return }
+        var report = CrawljobReport()
+        for file in files {
+            do {
+                report.merge(Crawljob.parse(try LinkImport.read(file: file)))
+            } catch {
+                report.merge(CrawljobReport(error: "\(file.lastPathComponent): \(error.localizedDescription)"))
+            }
+        }
+        if let open = crawljobDraft {
+            // A new draft (new id) so the open window shows the added files.
+            var merged = open.report
+            merged.merge(report)
+            crawljobDraft = CrawljobDraft(name: "\(open.name) + more", report: merged)
+        } else {
+            let name = files.count == 1 ? files[0].deletingPathExtension().lastPathComponent : "\(files.count) crawljob files"
+            crawljobDraft = CrawljobDraft(name: name, report: report)
+        }
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func chooseCrawljobs() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [UTType(filenameExtension: Crawljob.fileExtension) ?? .data]
+        panel.allowsMultipleSelection = true
+        panel.message = "Choose one or more JDownloader .crawljob files"
+        guard panel.runModal() == .OK else { return }
+        openCrawljobs(panel.urls)
+    }
+
+    /// Adds each job's links, saving where the job says. Returns how many links were added.
+    @discardableResult
+    func addCrawljobs(_ jobs: [CrawlJob], quality: Quality, startByDefault: Bool) -> Int {
+        toolsMissing = !Tools.installed
+        var added = 0
+        for job in jobs {
+            let place = Crawljob.destination(for: job, saveFolder: settings.saveFolder)
+            let name = job.links.count == 1 ? Crawljob.fileName(job.filename) : nil
+            for link in job.links {
+                if items.contains(where: { $0.url == link && $0.state != .done }) { continue }
+                let item = DownloadItem(url: link, quality: quality)
+                item.baseFolder = place.base
+                item.folder = place.folder
+                item.autoStart = job.autoStart ?? startByDefault
+                if let name {
+                    item.fileName = name
+                    item.keepFileName = true
+                }
+                items.append(item)
+                fetchInfo(item)
+                added += 1
+            }
+        }
+        return added
     }
 
     // MARK: Imported lists
@@ -174,11 +274,11 @@ final class QueueManager: ObservableObject {
                 if let entries = info.entries {
                     // A playlist link becomes one row per video.
                     items.removeAll { $0.id == item.id }
-                    add(urls: entries, folder: item.folder, autoStart: item.autoStart, quality: item.quality)
+                    add(urls: entries, folder: item.folder, baseFolder: item.baseFolder, autoStart: item.autoStart, quality: item.quality)
                     return
                 }
                 item.title = info.title
-                if item.fileName.isEmpty || !item.infoLoaded { item.fileName = FileNames.sanitize(info.title) }
+                if !item.keepFileName, item.fileName.isEmpty || !item.infoLoaded { item.fileName = FileNames.sanitize(info.title) }
                 item.site = Self.siteName(info.site, url: url)
                 item.thumbnail = info.thumbnail
                 item.duration = info.duration
@@ -282,7 +382,7 @@ final class QueueManager: ObservableObject {
         let url = item.url, quality = item.quality, parts = item.expectedParts
         let useLogin = item.useLogin, browser = settings.loginBrowser
         let trimStart = item.trimStart, trimEnd = item.trimEnd, duration = item.duration
-        let folder = item.folder.reduce(settings.saveFolder) { $0.appendingPathComponent($1, isDirectory: true) }
+        let folder = item.folder.reduce(item.baseFolder ?? settings.saveFolder) { $0.appendingPathComponent($1, isDirectory: true) }
         let captions = settings.saveCaptions
         let work = Tools.workRoot.appendingPathComponent(item.id.uuidString)
 
