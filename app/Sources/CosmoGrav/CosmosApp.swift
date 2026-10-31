@@ -8,6 +8,8 @@ enum Entry {
             ImportSelfTest.run()
         } else if CommandLine.arguments.contains("--selftest-crawljob") {
             CrawljobSelfTest.run()
+        } else if CommandLine.arguments.contains("--selftest-page") {
+            PageSelfTest.run(Array(CommandLine.arguments.drop(while: { $0 != "--selftest-page" }).dropFirst()))
         } else if CommandLine.arguments.contains("--selftest-files") {
             FileSelfTest.run(Array(CommandLine.arguments.drop(while: { $0 != "--selftest-files" }).dropFirst()))
         } else if CommandLine.arguments.contains("--selftest") {

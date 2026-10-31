@@ -170,6 +170,13 @@ struct ItemRow: View {
                     .foregroundStyle(Theme.danger)
                     .lineLimit(2)
                     .textSelection(.enabled)
+                if item.needsBrowser {
+                    Button { queue.openDownloadPage(item) } label: {
+                        Label("Open download page", systemImage: "safari")
+                    }
+                    .buttonStyle(PrimaryButtonStyle())
+                    .help("Opens the page in CosmoGrav's browser. Use the site's free download button; CosmoGrav takes the file from there.")
+                }
                 if item.needsLogin && !item.useLogin {
                     HStack(spacing: 6) {
                         Text("This site wants you to be logged in.").font(.system(size: 11)).foregroundStyle(.secondary)
@@ -195,6 +202,8 @@ struct ItemRow: View {
     private var actions: some View {
         VStack(spacing: 6) {
             switch item.state {
+            case .failed where item.needsBrowser, .cancelled where item.needsBrowser:
+                iconButton("safari", help: "Open download page", tint: Theme.gold) { queue.openDownloadPage(item) }
             case .ready, .cancelled:
                 iconButton("arrow.down", help: item.state == .cancelled && item.isFile ? "Resume" : "Download", tint: Theme.gold) { queue.start(item) }
             case .failed:

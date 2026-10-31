@@ -42,6 +42,17 @@ jobs:
           for i in $(seq 1 30); do curl -fsI http://127.0.0.1:8767/big.bin >/dev/null 2>&1 && break; sleep 1; done
           "dist/CosmoGrav.app/Contents/MacOS/CosmoGrav" --selftest-files \
             "http://127.0.0.1:8766/big.bin" "$SHA" "http://127.0.0.1:8767/big.bin" 2>&1 | tee dist/selftest-files.txt
+          # A file host style page: a short timer, then the page starts its own download.
+          head -c 3145728 /dev/urandom > /tmp/files/pack.7z
+          PSHA=$(shasum -a 256 /tmp/files/pack.7z | cut -d' ' -f1)
+          cat > /tmp/files/page.html <<'HTML'
+          <!doctype html><html><body style="background:#111;color:#eee;font:16px sans-serif">
+          <h1>pack.7z (3 MB)</h1><p id="t">Wait 2 sec.</p>
+          <a id="dl" href="pack.7z" download="pack.7z" style="display:none">Slow download</a>
+          <script>setTimeout(function(){document.getElementById('t').textContent='Starting';document.getElementById('dl').click();},2000);</script>
+          </body></html>
+          HTML
+          "dist/CosmoGrav.app/Contents/MacOS/CosmoGrav" --selftest-page "http://127.0.0.1:8766/page.html" "$PSHA" 2>&1 | tee dist/selftest-page.txt
 
       - name: Smoke test (launch the app and take a screenshot)
         continue-on-error: true
@@ -111,6 +122,7 @@ jobs:
           [ -f dist/screenshot-crawljob.png ] && gh release upload ci-preview dist/screenshot-crawljob.png --clobber
           [ -f dist/selftest-crawljob.txt ] && gh release upload ci-preview dist/selftest-crawljob.txt --clobber
           [ -f dist/selftest-files.txt ] && gh release upload ci-preview dist/selftest-files.txt --clobber
+          [ -f dist/selftest-page.txt ] && gh release upload ci-preview dist/selftest-page.txt --clobber
           [ -f dist/selftest.txt ] && gh release upload ci-preview dist/selftest.txt --clobber
 
       - name: Publish release

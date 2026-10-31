@@ -3,6 +3,8 @@ import Foundation
 struct PipelineError: LocalizedError {
     let message: String
     var needsLogin = false
+    /// A file host's download page: it has to be used in CosmoGrav's browser.
+    var needsBrowser = false
     var errorDescription: String? { message }
 
     /// Turns yt-dlp/ffmpeg output into one readable sentence and spots "you need to be logged in" failures.

@@ -1,6 +1,6 @@
 # Test server for the CI file-download check: serves files from a folder with byte-range support,
 # slowed down a little so a download can be paused part way. Listens on 127.0.0.1 only.
-import http.server, os, re, sys, time
+import http.server, mimetypes, os, re, sys, time
 
 ROOT = sys.argv[1]
 PORT = int(sys.argv[2]) if len(sys.argv) > 2 else 8766
@@ -23,7 +23,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return
             status = 206
         self.send_response(status)
-        self.send_header("Content-Type", "application/octet-stream")
+        self.send_header("Content-Type", mimetypes.guess_type(path)[0] or "application/octet-stream")
         self.send_header("Accept-Ranges", "bytes")
         self.send_header("Content-Length", str(end - start + 1))
         if status == 206:
