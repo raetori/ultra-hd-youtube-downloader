@@ -99,7 +99,6 @@ jobs:
           set -o pipefail
           mkdir -p /tmp/files
           python3 .github/scripts/range-server.py /tmp/files 8768 >/dev/null 2>&1 &
-          for i in $(seq 1 30); do curl -fsI http://127.0.0.1:8768/x >/dev/null 2>&1; [ $? -ne 7 ] && break; sleep 1; done
           # A file host style page: a short timer, then the page starts its own download.
           head -c 3145728 /dev/urandom > /tmp/files/pack.7z
           PSHA=$(shasum -a 256 /tmp/files/pack.7z | cut -d' ' -f1)
@@ -130,6 +129,7 @@ jobs:
           </script>
           </body></html>
           HTML
+          for i in $(seq 1 30); do if curl -fs -o /dev/null http://127.0.0.1:8768/page.html; then break; fi; sleep 1; done
           "dist/CosmoGrav.app/Contents/MacOS/CosmoGrav" --selftest-page "http://127.0.0.1:8768/page.html" "$PSHA" 2>&1 | tee dist/selftest-page.txt
 
       - name: Keep the screenshot on a "ci-preview" pre-release
