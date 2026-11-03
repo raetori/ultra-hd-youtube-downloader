@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grab media · CosmoGrav</title>
+<link rel="stylesheet" href="../lib/ui.css">
+<link rel="stylesheet" href="pages.css">
+</head>
+<body>
+<main class="wrap grab-wrap">
+  <header class="top">
+    <svg class="mark big" viewBox="0 0 100 100" aria-hidden="true"><path fill="currentColor" d="M82.70,79.44A44,44 0 1 1 82.70,20.56L71.55,30.60A29,29 0 1 0 71.55,69.40Z"/><circle fill="currentColor" cx="80" cy="50" r="9.5"/></svg>
+    <div>
+      <div class="eyebrow">Link grabber</div>
+      <h1 class="title" id="heading">Media on this page</h1>
+    </div>
+  </header>
+  <p class="lead" id="source"></p>
+  <div class="toolbar">
+    <div class="filters" id="filters" role="group" aria-label="Show"></div>
+    <input id="search" class="field grow" type="search" placeholder="Filter by name or link" aria-label="Filter">
+    <button id="all" class="btn btn-ghost">Select all</button>
+    <button id="none" class="btn btn-ghost">Select none</button>
+  </div>
+  <div id="list" class="list"></div>
+  <div class="sticky">
+    <span id="count" class="meta grow"></span>
+    <select id="quality" class="field" aria-label="Quality"></select>
+    <button id="import" class="btn btn-ghost" title="Review, divide into batches and choose folders in CosmoGrav">Open in Import window</button>
+    <button id="send" class="btn btn-primary">Download selected →</button>
+  </div>
+  <p id="result" class="small" role="status" aria-live="polite"></p>
+  <p class="rights small">Please only download content you have the rights to use.</p>
+</main>
+<script type="module" src="grab.js"></script>
+</body>
+</html>

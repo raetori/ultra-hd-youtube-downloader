@@ -56,6 +56,26 @@ When a new version is out, CosmoGrav shows an **Update now** button at the top. 
 
 Every video comes out as H.264 + AAC MP4. If the site's file is already H.264 it is kept as is (instant). Otherwise it is converted with your computer's built-in video encoder (Apple's on Mac; NVIDIA, Intel or AMD graphics on Windows, or the processor when there is none).
 
+## Chrome extension (Mac, CosmoGrav 1.7 and newer)
+
+Download straight from the browser. Works in Google Chrome, Brave, Microsoft Edge, Arc, Vivaldi and Chromium.
+
+**Set it up once (1 minute):** in CosmoGrav choose **File → Set Up Chrome Extension…** (or Settings → Browser extension). Chrome's Extensions page and a Finder window open. Turn on **Developer mode** (top right of the Extensions page), then drag the **Chrome Extension** folder from Finder onto the page. That's it.
+
+**What it does**
+
+- **Right-click** any link, video, audio, image or page → **Download with CosmoGrav**, or **Download with CosmoGrav as** → Best HD MP4, 1080p MP4, MP3, WAV, SRT captions or ProRes. Select text with several links and choose **Download every link in the selection**.
+- **Hover button** on videos and large images on any site (turn it on in the extension's settings; Chrome asks once). Images are sent at their full-size original where the site has one (X, Pinterest, Reddit, Wikipedia, WordPress, Unsplash).
+- **YouTube**: a CosmoGrav button under every video with quality choices, **clip marks** (mark start and end while watching, then download just that part), **last 30 seconds up to here**, **save this frame** as a full-resolution PNG, **download the thumbnail** at its largest size, **copy link at this moment**, and **whole playlist**. Thumbnails and Shorts get a hover button too.
+- **Grab all media on this page**: lists every video, video page, image, audio and file link on the page so you can tick what you want and send it to the queue or to the Import window.
+- **Send all tabs** in the window to the Import window.
+- **Shortcuts**: ⌥⇧G downloads the page you're on, ⌥⇧C opens the CosmoGrav menu (change them at `chrome://extensions/shortcuts`).
+- The menu shows what's downloading right now, with progress, and buttons to open CosmoGrav or your downloads folder.
+
+**Updates:** the extension comes inside the app. When CosmoGrav updates, it brings the matching extension, and Chrome picks it up on its own within the hour, or right away when you open the CosmoGrav menu.
+
+**Privacy and safety:** the extension talks only to CosmoGrav on your Mac, through Chrome's native messaging (no network port, no server, and only this extension may use it). It keeps no history and sends nothing anywhere. It asks for the "all sites" permission only if you turn on the hover button for other sites, and for your tabs only when you click Send all tabs. Links opened as `cosmograv://add?url=…` from a web page are added but never started on their own.
+
 ### Instagram, Facebook and logins
 
 Public posts usually work without logging in. If a site refuses, the video shows **Use my login**: pick your browser once in **Settings** and the app borrows that browser's login. It is never used unless you click it. On Windows, **Firefox** works best: Chrome and Edge lock their logins away from other apps.

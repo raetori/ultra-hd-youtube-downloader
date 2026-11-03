@@ -1,0 +1,79 @@
+{
+  "manifest_version": 3,
+  "name": "CosmoGrav",
+  "short_name": "CosmoGrav",
+  "version": "1.7.0",
+  "description": "Send any video, image, file or YouTube link to CosmoGrav on your Mac. Premiere-ready H.264/AAC MP4s, no accounts, no tracking.",
+  "homepage_url": "https://www.creationofcosmos.com",
+  "minimum_chrome_version": "116",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnOT0R8hlJ3cVn2mS42JMdOLc76b9H+k1WsH7Bj24EgGaT6u0/ADizG04ldqz030XRmNRvhDofqZr3F4T8SN9DphC2+b19Em+GWjGrVBTYBFJIhzX8xUv7B4E3jTdH6pLUOZoKTvAi/39wECxEg+Hm3+Ax3Jt7j6j9hJ/3pa9kFi4JtD1GYJtu0Iex9t66EUK/cl6hQ4yA724nplF76Eq+1/jryQeGqqG1CzEwvnjYaux6w5LfsCVlEw/UoTM8Kbh4OzTkfin2d+cSz7M0a7UiyvfZEBEQoULHxH7y1coxqfabvEr9mMRXxuXzDsMS+diJkAbr3Wg47wo83eD9aXVtwIDAQAB",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "CosmoGrav",
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": [
+    "contextMenus",
+    "nativeMessaging",
+    "storage",
+    "activeTab",
+    "scripting",
+    "alarms"
+  ],
+  "optional_permissions": [
+    "tabs"
+  ],
+  "optional_host_permissions": [
+    "<all_urls>"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://m.youtube.com/*"
+      ],
+      "js": [
+        "content/common.js",
+        "content/youtube.js"
+      ],
+      "css": [
+        "content/cosmograv.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_ui": {
+    "page": "pages/settings.html",
+    "open_in_tab": true
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+Shift+C"
+      },
+      "description": "Open CosmoGrav"
+    },
+    "send-tab": {
+      "suggested_key": {
+        "default": "Alt+Shift+G"
+      },
+      "description": "Download this page with CosmoGrav"
+    },
+    "grab-page": {
+      "description": "Grab all media on this page"
+    }
+  }
+}

@@ -4,7 +4,12 @@ import SwiftUI
 @main
 enum Entry {
     static func main() {
-        if CommandLine.arguments.contains("--selftest-import") {
+        if NativeHost.isHostLaunch(CommandLine.arguments) {
+            // Started by Chrome for the CosmoGrav extension: answer it, no window.
+            NativeHost.run(CommandLine.arguments)
+        } else if CommandLine.arguments.contains("--selftest-bridge") {
+            BridgeSelfTest.run()
+        } else if CommandLine.arguments.contains("--selftest-import") {
             ImportSelfTest.run()
         } else if CommandLine.arguments.contains("--selftest-crawljob") {
             CrawljobSelfTest.run()
@@ -60,6 +65,8 @@ struct CosmoGravApp: App {
                     .keyboardShortcut("o", modifiers: .command)
                 Button("Open .crawljob…") { queue.chooseCrawljobs() }
                     .keyboardShortcut("o", modifiers: [.command, .shift])
+                Divider()
+                Button("Set Up Chrome Extension…") { BrowserLink.setUpChrome() }
             }
             CommandGroup(replacing: .help) {
                 Link("Creation of Cosmos Website", destination: Tools.website)
@@ -85,8 +92,12 @@ struct CosmoGravApp: App {
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    /// .crawljob files double-clicked in Finder or dropped on the Dock icon.
+    /// .crawljob files double-clicked in Finder or dropped on the Dock icon, and cosmograv:// links.
     func application(_ application: NSApplication, open urls: [URL]) {
+        let links = urls.filter { $0.scheme?.lowercased() == BrowserBridge.scheme }
+        if !links.isEmpty {
+            if let bridge = QueueManager.shared?.browserLink { links.forEach(bridge.open) } else { BrowserLink.pendingURLs += links }
+        }
         let files = urls.filter { $0.isFileURL && $0.pathExtension.lowercased() == Crawljob.fileExtension }
         guard !files.isEmpty else { return }
         if let queue = QueueManager.shared { queue.openCrawljobs(files) } else { QueueManager.pendingFiles += files }
@@ -111,6 +122,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         QueueManager.shared?.stopEverything()
+        QueueManager.shared?.browserLink?.stop()
         try? FileManager.default.removeItem(at: Tools.workRoot)
     }
 }
