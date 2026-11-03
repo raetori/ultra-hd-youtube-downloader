@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v4
 
@@ -55,7 +55,13 @@ jobs:
         run: |
           open "dist/CosmoGrav.app"
           sleep 8
-          pgrep -x CosmoGrav
+          if ! pgrep -x CosmoGrav; then
+            echo "The app didn't stay open. Crash reports and a direct launch follow."
+            ls -t ~/Library/Logs/DiagnosticReports/ 2>/dev/null | grep -i cosmograv | head -3 | while read -r f; do head -80 ~/Library/Logs/DiagnosticReports/"$f"; done
+            ( "dist/CosmoGrav.app/Contents/MacOS/CosmoGrav" > /tmp/direct.log 2>&1 & echo $! > /tmp/direct.pid ); sleep 10
+            cat /tmp/direct.log; pgrep -x CosmoGrav && echo "Direct launch stays open" ; pkill -x CosmoGrav || true
+            exit 1
+          fi
           screencapture -x dist/screenshot.png
           pkill -x CosmoGrav || true
           sleep 2
