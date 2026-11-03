@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CosmoGrav</title>
+<link rel="stylesheet" href="../lib/ui.css">
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+<header class="head">
+  <svg class="mark" viewBox="0 0 100 100" aria-hidden="true"><path fill="currentColor" d="M82.70,79.44A44,44 0 1 1 82.70,20.56L71.55,30.60A29,29 0 1 0 71.55,69.40Z"/><circle fill="currentColor" cx="80" cy="50" r="9.5"/></svg>
+  <span class="wordmark">CosmoGrav</span>
+  <span id="status" class="chip"><span class="dot"></span><span>Checking</span></span>
+</header>
+
+<section id="offline" class="notice" hidden>
+  <p class="notice-title">CosmoGrav isn't connected</p>
+  <p class="small" id="offline-text">Open the CosmoGrav app once (version 1.7 or newer). It connects this browser on its own.</p>
+  <a id="how" href="#" class="small">How to connect →</a>
+</section>
+<section id="update" class="notice" hidden>
+  <p class="notice-title">Update CosmoGrav</p>
+  <p class="small" id="update-text"></p>
+</section>
+
+<section class="card page">
+  <div class="eyebrow">This page</div>
+  <p id="page-title" class="page-title">…</p>
+  <div class="row">
+    <select id="quality" class="field" aria-label="Quality"></select>
+    <button id="send" class="btn btn-primary">Download →</button>
+  </div>
+  <div class="row tools">
+    <button id="grab" class="btn btn-ghost">Grab all media</button>
+    <button id="tabs" class="btn btn-ghost">Send all tabs</button>
+  </div>
+  <p id="result" class="small result" role="status" aria-live="polite"></p>
+</section>
+
+<section id="queue" class="queue" hidden>
+  <div class="queue-head"><span class="eyebrow">In CosmoGrav</span><span id="counts" class="meta"></span></div>
+  <ul id="items"></ul>
+</section>
+
+<footer class="foot">
+  <button id="open-app" class="btn btn-ghost">Open CosmoGrav</button>
+  <button id="open-folder" class="btn btn-ghost">Show downloads</button>
+  <button id="settings" class="btn btn-ghost icon" title="Settings" aria-label="Settings">
+    <svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M11.3 1.5l.4 2.2a6.5 6.5 0 011.6.9l2.1-.8 1.3 2.2-1.7 1.5a6.6 6.6 0 010 1.9l1.7 1.4-1.3 2.3-2.1-.8a6.5 6.5 0 01-1.6.9l-.4 2.2H8.7l-.4-2.2a6.5 6.5 0 01-1.6-.9l-2.1.8-1.3-2.3 1.7-1.4a6.6 6.6 0 010-1.9L3.3 6l1.3-2.2 2.1.8a6.5 6.5 0 011.6-.9l.4-2.2zM10 7a3 3 0 100 6 3 3 0 000-6z"/></svg>
+  </button>
+</footer>
+<p class="rights small">Please only download content you have the rights to use.</p>
+<script type="module" src="popup.js"></script>
+</body>
+</html>

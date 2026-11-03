@@ -95,6 +95,8 @@ final class QueueManager: ObservableObject {
     /// Files opened from Finder before the queue existed.
     static var pendingFiles: [URL] = []
     private var watcher: CrawljobWatcher?
+    /// Links from the browser extension and cosmograv:// links.
+    private(set) var browserLink: BrowserLink?
     /// The download page shown in CosmoGrav's browser.
     @Published var browserItem: DownloadItem?
     private var browserSessions: [UUID: BrowserSession] = [:]
@@ -128,6 +130,9 @@ final class QueueManager: ObservableObject {
             openCrawljobs(Self.pendingFiles)
             Self.pendingFiles = []
         }
+        if !CommandLine.arguments.contains(where: { $0.hasPrefix("--") && $0.hasSuffix("demo") }) {
+            browserLink = BrowserLink(queue: self)
+        }
     }
 
     var activeCount: Int { items.filter { $0.state.isActive }.count }
@@ -152,6 +157,26 @@ final class QueueManager: ObservableObject {
             let item = DownloadItem(url: entry.url, quality: quality ?? settings.defaultQuality, title: entry.title)
             item.folder = folder
             item.baseFolder = baseFolder
+            item.autoStart = autoStart
+            items.append(item)
+            fetchInfo(item)
+        }
+    }
+
+    /// Links sent from the browser. One video can carry clip marks (seconds) from the YouTube button.
+    func addFromBrowser(_ entries: [(url: String, title: String?)], quality: Quality?, autoStart: Bool, from: Double?, to: Double?) {
+        toolsMissing = !Tools.installed
+        for entry in entries {
+            if let existing = items.first(where: { $0.url == entry.url && $0.state != .done }) {
+                // Sent again (for example with new clip marks): update the waiting row instead of adding a copy.
+                guard existing.state.canEdit else { continue }
+                if entries.count == 1 { existing.trimStart = from; existing.trimEnd = to }
+                if let quality, quality != existing.quality { existing.quality = quality; fetchInfo(existing) }
+                if autoStart { existing.autoStart = true; if existing.state.canStart { start(existing) } }
+                continue
+            }
+            let item = DownloadItem(url: entry.url, quality: quality ?? settings.defaultQuality, title: entry.title)
+            if entries.count == 1 { item.trimStart = from; item.trimEnd = to }
             item.autoStart = autoStart
             items.append(item)
             fetchInfo(item)

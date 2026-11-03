@@ -3,7 +3,7 @@ name: Build app
 on:
   push:
     branches: [main, "preview/**"]
-    paths: ["app/**", "assets/**", ".github/workflows/build-app.yml"]
+    paths: ["app/**", "assets/**", "extension/**", ".github/workflows/build-app.yml", ".github/scripts/**"]
   workflow_dispatch:
 
 permissions:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-15
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -26,6 +26,13 @@ jobs:
         run: |
           mkdir -p dist
           "dist/CosmoGrav.app/Contents/MacOS/CosmoGrav" --selftest-import 2>&1 | tee dist/selftest-import.txt
+
+      - name: Browser extension link test (no network)
+        run: |
+          set -o pipefail
+          python3 -c "import json,sys; v=open('app/VERSION').read().strip(); m=json.load(open('extension/manifest.json'))['version']; sys.exit(0 if m==v else 'extension/manifest.json says %s but app/VERSION is %s' % (m, v))"
+          "dist/CosmoGrav.app/Contents/MacOS/CosmoGrav" --selftest-bridge 2>&1 | tee dist/selftest-bridge.txt
+          python3 .github/scripts/native-host-test.py "dist/CosmoGrav.app/Contents/MacOS/CosmoGrav" 2>&1 | tee -a dist/selftest-bridge.txt
 
       - name: .crawljob and Folder Watch test (no network)
         run: |
@@ -150,6 +157,7 @@ jobs:
           [ -f dist/selftest-crawljob.txt ] && gh release upload ci-preview dist/selftest-crawljob.txt --clobber
           [ -f dist/selftest-files.txt ] && gh release upload ci-preview dist/selftest-files.txt --clobber
           [ -f dist/selftest-page.txt ] && gh release upload ci-preview dist/selftest-page.txt --clobber
+          [ -f dist/selftest-bridge.txt ] && gh release upload ci-preview dist/selftest-bridge.txt --clobber
           [ -f dist/selftest.txt ] && gh release upload ci-preview dist/selftest.txt --clobber
 
       - name: Publish release
@@ -161,9 +169,9 @@ jobs:
           VERSION=$(cat app/VERSION)
           (cd dist && shasum -a 256 CosmoGrav.zip > CosmoGrav.zip.sha256)
           if gh release view "v$VERSION" >/dev/null 2>&1; then
-            gh release upload "v$VERSION" dist/CosmoGrav.zip dist/CosmoGrav.zip.sha256 --clobber
+            gh release upload "v$VERSION" dist/CosmoGrav.zip dist/CosmoGrav.zip.sha256 dist/CosmoGrav-Chrome-Extension.zip --clobber
           else
-            gh release create "v$VERSION" dist/CosmoGrav.zip dist/CosmoGrav.zip.sha256 \
+            gh release create "v$VERSION" dist/CosmoGrav.zip dist/CosmoGrav.zip.sha256 dist/CosmoGrav-Chrome-Extension.zip \
               --title "CosmoGrav $VERSION" \
               --notes "Install or update with the one-line command in the README." \
               --latest

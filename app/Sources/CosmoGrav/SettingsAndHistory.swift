@@ -5,6 +5,8 @@ struct SettingsView: View {
     @EnvironmentObject private var queue: QueueManager
     @State private var updatingTools = false
     @State private var toolsMessage: String?
+    @State private var extensionReady = BrowserBridge.manifestVersion(at: BrowserBridge.extensionFolder) != nil
+    @State private var showExtensionSteps = false
 
     var body: some View {
         Form {
@@ -24,6 +26,32 @@ struct SettingsView: View {
                 Toggle("Also save captions (.srt) when available", isOn: $settings.saveCaptions)
                 Toggle("Notify me when downloads finish", isOn: $settings.notifyWhenDone)
                 Toggle("Offer links I copy when I switch to the app", isOn: $settings.watchClipboard)
+            }
+
+            Section {
+                LabeledContent("Chrome, Brave, Edge, Arc") {
+                    HStack {
+                        Text(extensionReady ? "Version \(BrowserBridge.bundledVersion ?? "–") ready" : "Not set up yet")
+                            .foregroundStyle(.secondary)
+                        Button("Set up Chrome extension…") {
+                            BrowserLink.setUpChrome()
+                            extensionReady = BrowserBridge.manifestVersion(at: BrowserBridge.extensionFolder) != nil
+                            showExtensionSteps = true
+                        }
+                    }
+                }
+                if showExtensionSteps {
+                    Text("1. In Chrome's Extensions page, turn on Developer mode (top right).\n2. Drag the “Chrome Extension” folder from the Finder window onto that page. Or click Load unpacked, press ⇧⌘G, paste (the folder's path is on your clipboard) and click Select.\nDone once: after that the extension updates itself whenever CosmoGrav updates.")
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            } header: {
+                Text("Browser extension")
+            } footer: {
+                Text("Right-click any link, video or image and pick Download with CosmoGrav, use the hover button on videos, or the CosmoGrav button under every YouTube video (with clip marks, frame grabs and thumbnails). The extension talks only to this app, never to a server.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
             }
 
             Section {

@@ -9,6 +9,18 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp app/.build/apple/Products/Release/CosmoGrav "$APP/Contents/MacOS/"
 sed "s/@VERSION@/$VERSION/g" app/Info.plist > "$APP/Contents/Info.plist"
 
+# The Chrome extension travels inside the app, stamped with the app's version, so they always match.
+EXT="$APP/Contents/Resources/ChromeExtension"
+cp -R extension "$EXT"
+python3 - "$EXT/manifest.json" "$VERSION" <<'PY'
+import json, sys
+path, version = sys.argv[1], sys.argv[2]
+m = json.load(open(path))
+m["version"] = version
+json.dump(m, open(path, "w"), indent=2)
+PY
+(cd "$APP/Contents/Resources" && ditto -c -k --keepParent ChromeExtension "$OLDPWD/dist/CosmoGrav-Chrome-Extension.zip")
+
 # App icon from assets/icon.png.
 ICONSET=$(mktemp -d)/AppIcon.iconset
 mkdir -p "$ICONSET"

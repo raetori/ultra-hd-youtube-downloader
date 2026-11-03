@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CosmoGrav extension</title>
+<link rel="stylesheet" href="../lib/ui.css">
+<link rel="stylesheet" href="pages.css">
+</head>
+<body>
+<main class="wrap">
+  <header class="top">
+    <svg class="mark big" viewBox="0 0 100 100" aria-hidden="true"><path fill="currentColor" d="M82.70,79.44A44,44 0 1 1 82.70,20.56L71.55,30.60A29,29 0 1 0 71.55,69.40Z"/><circle fill="currentColor" cx="80" cy="50" r="9.5"/></svg>
+    <div>
+      <div class="eyebrow" id="eyebrow">Extension settings</div>
+      <h1 class="title" id="heading">CosmoGrav for Chrome</h1>
+    </div>
+  </header>
+  <p class="lead" id="lead">Right-click anything, hover a video, or use the button under every YouTube video. CosmoGrav on your Mac does the download and makes it Premiere-ready.</p>
+
+  <section class="card" id="connection">
+    <div class="card-head"><span class="eyebrow">Connection</span><span id="status" class="chip"><span class="dot"></span><span>Checking</span></span></div>
+    <p id="conn-text">Checking for the CosmoGrav app on this computer…</p>
+    <ol id="conn-steps" class="steps" hidden>
+      <li>Install or update CosmoGrav (version 1.7 or newer). <a href="https://github.com/raetori/ultra-hd-youtube-downloader#readme" target="_blank" rel="noopener">How to install →</a></li>
+      <li>Open CosmoGrav once. It connects Chrome, Brave, Edge, Arc, Vivaldi and Chromium on its own.</li>
+      <li>Come back here and click Check again.</li>
+    </ol>
+    <div class="row"><button id="recheck" class="btn btn-ghost">Check again</button><span id="versions" class="meta"></span></div>
+  </section>
+
+  <section class="card">
+    <div class="eyebrow">Downloads</div>
+    <label class="line"><span><b>Quality</b><span class="dim">Used by the right-click menu, the hover button and the YouTube button. Pick another from each menu any time.</span></span>
+      <select id="quality" class="field"></select></label>
+    <label class="line"><span><b>Start downloading right away</b><span class="dim">Off: links wait in CosmoGrav until you click Download.</span></span><span class="switch"><input type="checkbox" id="autoStart"><span></span></span></label>
+    <label class="line"><span><b>Bring CosmoGrav to the front</b><span class="dim">Off: you stay in the browser and get a small message instead.</span></span><span class="switch"><input type="checkbox" id="focusApp"><span></span></span></label>
+    <label class="line"><span><b>Show a message on the page after sending</b></span><span class="switch"><input type="checkbox" id="toast"><span></span></span></label>
+  </section>
+
+  <section class="card">
+    <div class="eyebrow">YouTube</div>
+    <label class="line"><span><b>CosmoGrav button under every video</b><span class="dim">Quality, clip start and end marks, last 30 seconds, frame grab, best thumbnail, whole playlist.</span></span><span class="switch"><input type="checkbox" id="youtubeButton"><span></span></span></label>
+    <label class="line"><span><b>Hover button on thumbnails and Shorts</b></span><span class="switch"><input type="checkbox" id="youtubeThumbs"><span></span></span></label>
+  </section>
+
+  <section class="card">
+    <div class="eyebrow">Every other site</div>
+    <label class="line"><span><b>Hover button on videos and large images</b><span class="dim" id="hover-note">Chrome asks once to let CosmoGrav see the pages you visit. It only looks for videos and images, and nothing leaves your computer.</span></span><span class="switch"><input type="checkbox" id="hoverEverywhere"><span></span></span></label>
+    <label class="line"><span><b>Include images</b><span class="dim">Sends the full-size original where the site has one (X, Pinterest, Reddit, Wikipedia, WordPress, Unsplash).</span></span><span class="switch"><input type="checkbox" id="hoverImages"><span></span></span></label>
+  </section>
+
+  <section class="card">
+    <div class="eyebrow">Shortcuts</div>
+    <p class="tight"><kbd id="k1">⌥⇧G</kbd> download the page you're on &nbsp;·&nbsp; <kbd id="k2">⌥⇧C</kbd> open the CosmoGrav menu</p>
+    <p class="tight dim">Change them, or add one for "Grab all media on this page", in <a href="#" id="shortcuts">Chrome's shortcut settings →</a></p>
+  </section>
+
+  <section class="card">
+    <div class="eyebrow">Updates</div>
+    <p class="tight">The extension comes with the CosmoGrav app. When CosmoGrav updates, it brings the matching extension, and Chrome picks it up on its own within the hour (or right away when you open the CosmoGrav menu).</p>
+    <p class="tight meta" id="ext-version"></p>
+  </section>
+
+  <section class="card">
+    <div class="eyebrow">Privacy</div>
+    <p class="tight">Everything runs on your computer. The extension talks only to the CosmoGrav app, never to a server. No accounts, no tracking, no history kept by the extension. Settings stay in this browser.</p>
+  </section>
+  <p class="rights small">Please only download content you have the rights to use. · <a href="https://www.creationofcosmos.com" target="_blank" rel="noopener">Creation of Cosmos</a></p>
+</main>
+<script type="module" src="settings.js"></script>
+</body>
+</html>
