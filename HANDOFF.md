@@ -97,7 +97,7 @@ Claude Code sessions on this repository read it on their own (see `CLAUDE.md`).
 ## Live status
 
 <!-- LIVE-STATUS:START (filled in by .github/scripts/update-handoff.py, do not edit by hand) -->
-_Last refreshed 2026-11-05 13:12 UTC._
+_Last refreshed 2026-11-05 13:13 UTC._
 
 | | In the code (main) | Latest published release |
 |---|---|---|
@@ -113,7 +113,7 @@ _Last refreshed 2026-11-05 13:12 UTC._
 
 **Last 15 changes on main** (newest first)
 
-- 2026-11-05 `6fc219b` Handoff: refresh live status
+- 2026-11-05 `6150f33` Handoff: leave the bot's own refresh commits out of the change list
 - 2026-11-05 `4a3a3d6` Self-updating HANDOFF.md for new Claude chats
 - 2026-11-03 `a5556c0` CI: show why the app closes when the launch check fails
 - 2026-11-03 `423b0fd` CI: build the Mac app on GitHub's Intel Mac machines
