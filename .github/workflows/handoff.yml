@@ -1,0 +1,54 @@
+name: Refresh handoff
+
+# Keeps the "Live status" part of HANDOFF.md current: versions, releases,
+# open pull requests and recent changes. Pushes made with GITHUB_TOKEN don't
+# start other workflows, so this can't loop or trigger a release.
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["HANDOFF.md"]
+  release:
+    types: [published]
+  pull_request:
+    types: [opened, closed, reopened]
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: refresh-handoff
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 50
+
+      - name: Refresh live status
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 .github/scripts/update-handoff.py
+
+      - name: Save if changed
+        run: |
+          if git diff --quiet -- HANDOFF.md; then
+            echo "Nothing new."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add HANDOFF.md
+          git commit -m "Handoff: refresh live status"
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push origin HEAD:main && exit 0
+            sleep $((i * 5))
+          done
+          exit 1
