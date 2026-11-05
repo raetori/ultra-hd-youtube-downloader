@@ -77,7 +77,8 @@ enum ItemState: Equatable {
 @MainActor
 final class DownloadItem: ObservableObject, Identifiable {
     let id = UUID()
-    let url: String
+    /// Can change once while loading, when a short link (pin.it) is opened to find the real one.
+    var url: String
 
     @Published var title: String
     @Published var fileName: String

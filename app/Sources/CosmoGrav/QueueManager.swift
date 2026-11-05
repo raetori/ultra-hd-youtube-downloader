@@ -152,7 +152,8 @@ final class QueueManager: ObservableObject {
     func add(urls: [(url: String, title: String?)], folder: [String] = [], baseFolder: URL? = nil, autoStart: Bool = false,
              quality: Quality? = nil) {
         toolsMissing = !Tools.installed
-        for entry in urls {
+        for var entry in urls {
+            entry.url = Pinterest.cleaned(entry.url)
             if items.contains(where: { $0.url == entry.url && $0.state != .done }) { continue }
             let item = DownloadItem(url: entry.url, quality: quality ?? settings.defaultQuality, title: entry.title)
             item.folder = folder
@@ -166,7 +167,8 @@ final class QueueManager: ObservableObject {
     /// Links sent from the browser. One video can carry clip marks (seconds) from the YouTube button.
     func addFromBrowser(_ entries: [(url: String, title: String?)], quality: Quality?, autoStart: Bool, from: Double?, to: Double?) {
         toolsMissing = !Tools.installed
-        for entry in entries {
+        for var entry in entries {
+            entry.url = Pinterest.cleaned(entry.url)
             if let existing = items.first(where: { $0.url == entry.url && $0.state != .done }) {
                 // Sent again (for example with new clip marks): update the waiting row instead of adding a copy.
                 guard existing.state.canEdit else { continue }
@@ -417,11 +419,19 @@ final class QueueManager: ObservableObject {
         item.state = .fetching
         item.detail = "Getting info…"
         item.errorMessage = nil
-        let url = item.url, quality = item.quality, useLogin = item.useLogin, browser = settings.loginBrowser
+        let firstURL = item.url, quality = item.quality, useLogin = item.useLogin, browser = settings.loginBrowser
         Task {
+            var url = firstURL
             await infoLimiter.acquire()
             defer { Task { await infoLimiter.release() } }
             do {
+                var pinterest = Pinterest.classify(url)
+                if case .short(let short)? = pinterest {
+                    url = try await Pinterest.resolveShort(short)
+                    item.url = url
+                    pinterest = Pinterest.classify(url)
+                }
+                if case .notAPin(let reason)? = pinterest { throw PipelineError(message: reason) }
                 if let resolution = FileLinks.resolve(url) {
                     switch resolution {
                     case .unsupported(let reason):
@@ -438,6 +448,18 @@ final class QueueManager: ObservableObject {
                 let info: MediaInfo
                 do {
                     info = try await Pipeline.fetchInfo(url: url, quality: quality, useLogin: useLogin, browser: browser)
+                } catch let error as PipelineError where pinterest != nil {
+                    guard case .pin? = pinterest, error.message.lowercased().contains("no video formats") else {
+                        throw Pinterest.explain(error, kind: pinterest!)
+                    }
+                    // A picture pin: save the original image, kept as it is.
+                    let image = try await Pinterest.originalImage(pin: url, useLogin: useLogin, browser: browser)
+                    var probe = try await FileDownloader.probe(image.url, service: "Pinterest")
+                    if let title = image.title {
+                        probe = FileProbe(source: probe.source, size: probe.size, ranges: probe.ranges, name: FileNames.sanitize(title), ext: probe.ext)
+                    }
+                    applyFile(item, probe, service: "Pinterest")
+                    return
                 } catch let error as PipelineError where error.message.lowercased().contains("unsupported url") {
                     // Not a video site: it may still be a plain file link without a file name in it.
                     guard let direct = URL(string: url) else { throw error }
@@ -524,7 +546,8 @@ final class QueueManager: ObservableObject {
         let known: [(String, String)] = [("youtu", "YouTube"), ("tiktok", "TikTok"), ("instagram", "Instagram"),
                                          ("facebook", "Facebook"), ("fb.watch", "Facebook"), ("vimeo", "Vimeo"),
                                          ("twitter", "X"), ("x.com", "X"), ("twitch", "Twitch"), ("reddit", "Reddit"),
-                                         ("soundcloud", "SoundCloud"), ("dailymotion", "Dailymotion")]
+                                         ("soundcloud", "SoundCloud"), ("dailymotion", "Dailymotion"),
+                                         ("pinterest", "Pinterest"), ("pin.it", "Pinterest")]
         if let match = known.first(where: { host.contains($0.0) }) { return match.1 }
         if !extractor.isEmpty, extractor.lowercased() != "generic" { return extractor }
         return host.replacingOccurrences(of: "www.", with: "")

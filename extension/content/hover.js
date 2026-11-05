@@ -14,10 +14,29 @@
     return r.width >= min.w && r.height >= min.h && r.bottom > 0 && r.top < innerHeight;
   };
 
+  const PINTEREST = /(^|\.)pinterest\.[a-z.]+$/i.test(location.hostname);
+
+  /**
+   * Pinterest plays every pin in the feed, search and boards from a stream, and the page address is the feed,
+   * not the pin. The pin's own link (/pin/<number>/) is in the card around the video or picture.
+   */
+  function pinLink(el) {
+    if (!PINTEREST) return null;
+    const PIN = /\/pin\/(?:[\w-]+--)?(\d{5,30})/;
+    const idIn = (href) => { try { return new URL(href, location.href).pathname.match(PIN)?.[1]; } catch { return null; } };
+    const card = el.closest("[data-grid-item], [data-test-id='pin'], [data-test-id='pinWrapper'], [data-test-id='pin-visual-wrapper']");
+    const link = el.closest("a[href*='/pin/']") || card?.querySelector("a[href*='/pin/']");
+    const id = (link && idIn(link.href)) || (!card && idIn(location.href));
+    // A pin opened on its own page: the big video there is that pin.
+    return id ? `https://www.pinterest.com/pin/${id}/` : null;
+  }
+
   /** Posts on social sites play from a stream, so their own page link works best. */
   function videoLink(v) {
     const src = v.currentSrc || v.src || "";
     if (/^https?:/.test(src) && FILE_VIDEO.test(src)) return src;
+    const pin = pinLink(v);
+    if (pin) return pin;
     const post = v.closest("article, [role='article'], [data-testid='tweet']");
     const scope = post || v.parentElement?.parentElement?.parentElement || document;
     const permalink = [...scope.querySelectorAll("a[href]")].map((a) => a.href).find((h) =>
@@ -50,6 +69,7 @@
         menu: () => [
           { heading: "Image" },
           { label: "Download the original", hint: "full size", action: () => CG.send([{ url: src(), title: el.alt || CG.title() }]) },
+          ...(pinLink(el) ? [{ label: "Send the whole pin", hint: "video too", action: () => CG.send([{ url: pinLink(el), title: el.alt || CG.title() }]) }] : []),
           { label: "Open the original", action: () => window.open(src(), "_blank", "noopener") },
           { label: "Copy image link", action: () => CG.copy(src(), "Image link copied") },
         ],

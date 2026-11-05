@@ -76,6 +76,7 @@ Claude Code sessions on this repository read it on their own (see `CLAUDE.md`).
 - 1.5 JDownloader `.crawljob` files and Folder Watch
 - 1.6 any file type, Google Drive/Dropbox/OneDrive links, resumable 8-piece downloads; 1.6.1 file-host download pages in a built-in browser
 - 1.7 Chrome extension (right-click, hover and YouTube buttons, link grabber) synced with the app
+- 1.7.1 Pinterest fixed: ph./other country links and pin.it short links become the www pin, feed/search/profile pages get a clear "open the pin" message instead of a 404, picture pins save the original image, the hover button sends the pin's own link; hover button no longer cropped (`Pinterest.swift`)
 
 ## Ideas and open items
 

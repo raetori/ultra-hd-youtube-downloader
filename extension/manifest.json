@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "CosmoGrav",
   "short_name": "CosmoGrav",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "description": "Send any video, image, file or YouTube link to CosmoGrav on your Mac. Premiere-ready H.264/AAC MP4s, no accounts, no tracking.",
   "homepage_url": "https://www.creationofcosmos.com",
   "minimum_chrome_version": "116",
