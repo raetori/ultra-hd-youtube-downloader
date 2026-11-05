@@ -113,6 +113,7 @@ _Last refreshed 2026-11-05 13:12 UTC._
 
 **Last 15 changes on main** (newest first)
 
+- 2026-11-05 `6fc219b` Handoff: refresh live status
 - 2026-11-05 `4a3a3d6` Self-updating HANDOFF.md for new Claude chats
 - 2026-11-03 `a5556c0` CI: show why the app closes when the launch check fails
 - 2026-11-03 `423b0fd` CI: build the Mac app on GitHub's Intel Mac machines
@@ -127,5 +128,4 @@ _Last refreshed 2026-11-05 13:12 UTC._
 - 2026-10-31 `253d647` Open JDownloader .crawljob files and watch a folder for them
 - 2026-10-30 `d31a6ac` README and version 1.4.1 for Captions only (SRT)
 - 2026-10-30 `5678f02` Captions only (SRT) option, also for whole imported lists
-- 2026-10-30 `0be5812` Import long link lists from .txt, .csv or a paste and divide them into batches
 <!-- LIVE-STATUS:END -->
