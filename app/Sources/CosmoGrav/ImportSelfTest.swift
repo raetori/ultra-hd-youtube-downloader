@@ -55,6 +55,18 @@ enum ImportSelfTest {
         check(r.links.allSatisfy { $0.url.hasPrefix("https://") || $0.url.hasPrefix("http://") }, "only web links")
         check(!r.links.contains { $0.url.contains("passwd") || $0.url.contains("user:") }, "file and login links refused")
 
+        // Pinterest: country addresses become the www pin, pages that aren't a pin are explained.
+        check(Pinterest.classify("https://ph.pinterest.com/pin/664281013778109217/") == .pin("https://www.pinterest.com/pin/664281013778109217/"), "Pinterest ph. pin made www")
+        check(Pinterest.classify("https://www.pinterest.co.uk/pin/origami-crane--664281013778109217/sent/?invite_code=x") == .pin("https://www.pinterest.com/pin/664281013778109217/"), "Pinterest pin with words and share tags")
+        check(Pinterest.classify("https://ph.pinterest.com/") == .notAPin(Pinterest.notAPinMessage), "Pinterest home feed explained")
+        check(Pinterest.classify("https://ph.pinterest.com/search/pins/?q=cars") == .notAPin(Pinterest.notAPinMessage), "Pinterest search explained")
+        check(Pinterest.classify("https://www.pinterest.com/someone/_saved/") == .notAPin(Pinterest.notAPinMessage), "Pinterest profile tab explained")
+        check(Pinterest.classify("https://www.pinterest.com/someone/") == .notAPin(Pinterest.notAPinMessage), "Pinterest profile explained")
+        check(Pinterest.classify("https://ph.pinterest.com/someone/travel-ideas/") == .board("https://www.pinterest.com/someone/travel-ideas/"), "Pinterest board kept")
+        check(Pinterest.classify("https://pin.it/4Xyz12AB") == .short(URL(string: "https://pin.it/4Xyz12AB")!), "pin.it short link")
+        check(Pinterest.classify("https://pinterest.evil.com/pin/123456789/") == nil && Pinterest.classify("https://example.com/pin/123456/") == nil, "only Pinterest hosts")
+        check(LinkImport.parse("https://in.pinterest.com/pin/123456789012/\nhttps://www.pinterest.com/pin/123456789012/").links.count == 1, "Pinterest repeats found across countries")
+
         let sample = LinkImport.parse(sampleList)
         check(sample.count(.video) == 110 && sample.count(.short) == 39, "sample: 110 videos, 39 Shorts")
         check(sample.duplicates == 2 && sample.problems.count == 2, "sample: 2 repeats, 2 skipped lines")

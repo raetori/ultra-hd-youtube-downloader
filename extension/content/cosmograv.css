@@ -11,8 +11,8 @@
 
 /* Floating hover button */
 .cosmograv-float {
-  position: fixed !important; z-index: 2147483646 !important; display: flex; align-items: stretch; height: 30px;
-  border-radius: 999px; background: rgba(5,5,6,.82); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  position: fixed !important; z-index: 2147483646 !important; display: flex; align-items: stretch; height: 32px; width: max-content; white-space: nowrap;
+  border-radius: 999px; background: rgba(5,5,6,.86); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   box-shadow: inset 0 0 0 1px rgba(237,194,135,.35), 0 0 18px rgba(237,194,135,.22);
   opacity: 0; transform: translateY(-4px); pointer-events: none; transition: opacity .35s var(--cg-ease), transform .35s var(--cg-ease);
 }
@@ -21,10 +21,12 @@
   all: unset; cursor: pointer; display: flex; align-items: center; gap: 6px; color: var(--cg-strong);
   font: 500 12px/1 -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif; transition: background .35s var(--cg-ease);
 }
-.cosmograv-float-main { padding: 0 10px 0 9px; border-radius: 999px 0 0 999px; }
-.cosmograv-float-main svg { width: 14px; height: 14px; color: var(--cg-gold); filter: drop-shadow(0 0 4px rgba(237,194,135,.6)); }
-.cosmograv-float-more { padding: 0 9px 0 7px; border-radius: 0 999px 999px 0; box-shadow: inset 1px 0 0 var(--cg-hair); }
-.cosmograv-float-more svg { width: 9px; height: 6px; }
+/* Two class names, so they win over the reset above (which used to wipe the padding and crop the arrow). */
+.cosmograv-float .cosmograv-float-main { padding: 0 12px 0 11px; gap: 7px; border-radius: 999px 0 0 999px; letter-spacing: .1px; }
+.cosmograv-float .cosmograv-float-main svg { flex: none; width: 14px; height: 14px; max-width: none; color: var(--cg-gold); filter: drop-shadow(0 0 4px rgba(237,194,135,.6)); }
+.cosmograv-float .cosmograv-float-more { justify-content: center; min-width: 30px; padding: 0 11px 0 9px; border-radius: 0 999px 999px 0; box-shadow: inset 1px 0 0 rgba(255,255,255,.14); color: var(--cg-soft); }
+.cosmograv-float .cosmograv-float-more svg { flex: none; width: 9px; height: 6px; max-width: none; }
+.cosmograv-float .cosmograv-float-more:hover { color: var(--cg-strong); }
 .cosmograv-float button:hover { background: rgba(255,255,255,.08); }
 .cosmograv-float button:focus-visible { outline: 2px solid var(--cg-gold); outline-offset: 2px; }
 
@@ -71,10 +73,10 @@
 .cosmograv-yt:hover { box-shadow: inset 0 0 0 1px rgba(237,194,135,.6), 0 0 22px rgba(237,194,135,.32); }
 .cosmograv-yt button { all: unset; cursor: pointer; display: flex; align-items: center; gap: 7px; color: #fff;
   font: 500 14px/1 "Roboto", -apple-system, "SF Pro Text", system-ui, sans-serif; transition: background .35s var(--cg-ease); }
-.cosmograv-yt-main { padding: 0 12px 0 12px; border-radius: 999px 0 0 999px; }
-.cosmograv-yt-main svg { width: 17px; height: 17px; color: var(--cg-gold); filter: drop-shadow(0 0 4px rgba(237,194,135,.55)); }
-.cosmograv-yt-more { padding: 0 12px 0 9px; border-radius: 0 999px 999px 0; box-shadow: inset 1px 0 0 rgba(255,255,255,.12); }
-.cosmograv-yt-more svg { width: 10px; height: 6px; }
+.cosmograv-yt .cosmograv-yt-main { padding: 0 13px 0 12px; border-radius: 999px 0 0 999px; }
+.cosmograv-yt .cosmograv-yt-main svg { flex: none; width: 17px; height: 17px; max-width: none; color: var(--cg-gold); filter: drop-shadow(0 0 4px rgba(237,194,135,.55)); }
+.cosmograv-yt .cosmograv-yt-more { justify-content: center; min-width: 34px; padding: 0 12px 0 10px; border-radius: 0 999px 999px 0; box-shadow: inset 1px 0 0 rgba(255,255,255,.12); }
+.cosmograv-yt .cosmograv-yt-more svg { flex: none; width: 10px; height: 6px; max-width: none; }
 .cosmograv-yt button:hover { background: rgba(255,255,255,.08); }
 .cosmograv-yt button:focus-visible { outline: 2px solid var(--cg-gold); outline-offset: 2px; }
 .cosmograv-yt-chip { padding: 3px 7px; border-radius: 999px; color: var(--cg-gold); box-shadow: inset 0 0 0 1px rgba(237,194,135,.35);

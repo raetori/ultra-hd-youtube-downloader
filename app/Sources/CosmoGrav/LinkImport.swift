@@ -203,6 +203,12 @@ enum LinkImport {
         let host = rawHost.hasPrefix("www.") ? String(rawHost.dropFirst(4)) : rawHost
 
         if let youtube = youTube(host: host, parts: parts) { return youtube }
+        switch Pinterest.classify(raw) {
+        case .pin(let url): return .success(Normalized(url: url, kind: .video, key: "pinterest:" + url))
+        case .board(let url): return .success(Normalized(url: url, kind: .playlist, key: "pinterest:" + url.lowercased()))
+        case .notAPin: return .failure(Rejection(message: "Pinterest page, not a pin"))
+        case .short, nil: break
+        }
 
         parts.scheme = scheme
         parts.host = rawHost
