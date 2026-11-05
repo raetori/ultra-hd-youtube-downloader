@@ -97,7 +97,7 @@ Claude Code sessions on this repository read it on their own (see `CLAUDE.md`).
 ## Live status
 
 <!-- LIVE-STATUS:START (filled in by .github/scripts/update-handoff.py, do not edit by hand) -->
-_Last refreshed 2026-11-05 13:13 UTC._
+_Last refreshed 2026-11-05 13:22 UTC._
 
 | | In the code (main) | Latest published release |
 |---|---|---|
@@ -107,6 +107,7 @@ _Last refreshed 2026-11-05 13:13 UTC._
 
 **Open pull requests**
 
+- #18 Add Pinterest support with pin/board classification and short link resolution (branch `claude/project-thread-4ccqhv`, opened 2026-11-05)
 - #7 Bump actions/checkout from 4 to 7 (branch `dependabot/github_actions/actions/checkout-7`, opened 2026-10-30)
 - #6 Bump actions/upload-artifact from 4 to 7 (branch `dependabot/github_actions/actions/upload-artifact-7`, opened 2026-10-30)
 - #5 Windows: download-and-double-click installer (CosmoGrav-Setup.exe) (branch `claude/project-thread-v0ezpy`, opened 2026-10-30)
