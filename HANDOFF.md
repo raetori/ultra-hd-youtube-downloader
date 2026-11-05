@@ -98,23 +98,23 @@ Claude Code sessions on this repository read it on their own (see `CLAUDE.md`).
 ## Live status
 
 <!-- LIVE-STATUS:START (filled in by .github/scripts/update-handoff.py, do not edit by hand) -->
-_Last refreshed 2026-11-05 13:22 UTC._
+_Last refreshed 2026-11-05 13:33 UTC._
 
 | | In the code (main) | Latest published release |
 |---|---|---|
-| Mac app | 1.7.0 (`app/VERSION`) | v1.7.0 (2026-11-03) |
+| Mac app | 1.7.1 (`app/VERSION`) | v1.7.0 (2026-11-03) |
 | Windows app | 1.3.0 (`windows/VERSION`) | win-v1.3.0 (2026-10-25) |
-| Chrome extension | 1.7.0 (`extension/manifest.json`) | ships inside the Mac app |
+| Chrome extension | 1.7.1 (`extension/manifest.json`) | ships inside the Mac app |
 
 **Open pull requests**
 
-- #18 Add Pinterest support with pin/board classification and short link resolution (branch `claude/project-thread-4ccqhv`, opened 2026-11-05)
 - #7 Bump actions/checkout from 4 to 7 (branch `dependabot/github_actions/actions/checkout-7`, opened 2026-10-30)
 - #6 Bump actions/upload-artifact from 4 to 7 (branch `dependabot/github_actions/actions/upload-artifact-7`, opened 2026-10-30)
 - #5 Windows: download-and-double-click installer (CosmoGrav-Setup.exe) (branch `claude/project-thread-v0ezpy`, opened 2026-10-30)
 
 **Last 15 changes on main** (newest first)
 
+- 2026-11-05 `4c89c11` Pinterest: fix 404s from feed and country links, save picture pins, uncrop the hover button
 - 2026-11-05 `6150f33` Handoff: leave the bot's own refresh commits out of the change list
 - 2026-11-05 `4a3a3d6` Self-updating HANDOFF.md for new Claude chats
 - 2026-11-03 `a5556c0` CI: show why the app closes when the launch check fails
@@ -129,5 +129,4 @@ _Last refreshed 2026-11-05 13:22 UTC._
 - 2026-10-31 `f59ceb9` Download any file and public Drive, Dropbox and OneDrive links, in resumable pieces
 - 2026-10-31 `253d647` Open JDownloader .crawljob files and watch a folder for them
 - 2026-10-30 `d31a6ac` README and version 1.4.1 for Captions only (SRT)
-- 2026-10-30 `5678f02` Captions only (SRT) option, also for whole imported lists
 <!-- LIVE-STATUS:END -->
