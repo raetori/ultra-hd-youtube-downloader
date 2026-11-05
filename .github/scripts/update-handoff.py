@@ -94,7 +94,7 @@ def build():
 
     lines.append("**Last 15 changes on main** (newest first)")
     lines.append("")
-    log = git("log", "--no-merges", "-15", "--date=short", "--format=%ad\t%h\t%s")
+    log = git("log", "--no-merges", "--invert-grep", "--grep=^Handoff: refresh live status", "-15", "--date=short", "--format=%ad\t%h\t%s")
     for row in log.strip().splitlines():
         date, sha, subject = row.split("\t", 2)
         lines.append("- %s `%s` %s" % (date, sha, clean(subject)))
