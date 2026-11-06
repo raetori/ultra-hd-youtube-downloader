@@ -98,11 +98,11 @@ Claude Code sessions on this repository read it on their own (see `CLAUDE.md`).
 ## Live status
 
 <!-- LIVE-STATUS:START (filled in by .github/scripts/update-handoff.py, do not edit by hand) -->
-_Last refreshed 2026-11-05 13:33 UTC._
+_Last refreshed 2026-11-06 07:26 UTC._
 
 | | In the code (main) | Latest published release |
 |---|---|---|
-| Mac app | 1.7.1 (`app/VERSION`) | v1.7.0 (2026-11-03) |
+| Mac app | 1.7.1 (`app/VERSION`) | v1.7.1 (2026-11-05) |
 | Windows app | 1.3.0 (`windows/VERSION`) | win-v1.3.0 (2026-10-25) |
 | Chrome extension | 1.7.1 (`extension/manifest.json`) | ships inside the Mac app |
 
